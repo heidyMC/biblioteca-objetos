@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Image, ScrollView, TouchableOpacity } from 'react-native';
-import TextComponent from '@/components/ui/text-component';
-import ButtonComponent from '@/components/ui/button-component';
 import InputComponent from '@/components/ui/input-component';
-
+import TextComponent from '@/components/ui/text-component';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 const productos = [
   {
     id: '1',
@@ -37,6 +36,7 @@ const productos = [
 
 const MainScreen = () => {
   const [search, setSearch] = useState('');
+  const router = useRouter(); // Agrega esta línea
 
   return (
     <View style={styles.container}>
@@ -68,12 +68,16 @@ const MainScreen = () => {
       {/* Productos */}
       <ScrollView contentContainerStyle={styles.productGrid}>
         {productos.map((item) => (
-          <View key={item.id} style={styles.card}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.card}
+            onPress={() => router.push(`/detalleProducto?id=${item.id}`)} // Cambia aquí
+          >
             <Image source={{ uri: item.imagen }} style={styles.cardImage} />
             <TextComponent text={item.nombre} fontWeight="bold" />
             <TextComponent text={item.precio} />
             <TextComponent text={`★ ${item.rating}`} />
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
