@@ -2,23 +2,30 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-
-
 const Perfil = () => {
   const navigation = useNavigation();
 
   const handleCerrarSesion = () => {
-   
     console.log('Cerrar sesión');
-   
+  };
+
+  const irAHome = () => {
+    console.log("bienvenido a home")
   };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Mi Perfil</Text>
-      </View>
+      <TouchableOpacity onPress={irAHome} style={styles.homeButton}>
+        <Text style={styles.homeButtonText}>{"<"}</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.title}>Mi Perfil</Text>
+
+      
+      <View style={{ width: 40 }} />
+    </View>
 
       {/* Perfil */}
       <View style={styles.profileContainer}>
@@ -64,18 +71,39 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    position: 'absolute',
-    top: 150,
-    marginLeft: 30,
+  position: 'absolute',
+  top: 100,
+  width: '100%',
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingHorizontal: 15,
   },
+
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#050505ff',
+    textAlign: 'center',
+    flex: 1, 
+  },
+
+  homeButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#0f0f0fff',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  homeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 20,
   },
   profileContainer: {
     alignItems: 'center',
-    marginTop: 60,
+    marginTop: 140,
     width: '100%',
   },
   profileImage: {
@@ -86,14 +114,12 @@ const styles = StyleSheet.create({
     borderColor: '#8A2BE2',
   },
   tokenContainer: {
-    backgroundColor: '#EEE6FF',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginTop: 10,
+  marginTop: 10, // solo espacio encima
+  paddingVertical: 0,
+  paddingHorizontal: 0,
   },
   tokenText: {
-    color: '#8A2BE2',
+    color: '#100f10ff',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -130,3 +156,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+
