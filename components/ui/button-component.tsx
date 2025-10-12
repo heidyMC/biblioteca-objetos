@@ -1,15 +1,16 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
+import { GestureResponderEvent, StyleSheet, Text, TouchableOpacity } from "react-native";
 
 type ButtonComponentProps = {
   label: string;
+  onPress?: (event: GestureResponderEvent) => void; // Permite pasar una función personalizada
 };
 
-const ButtonComponent = (props : ButtonComponentProps) => {
+const ButtonComponent = (props: ButtonComponentProps) => {
   return (
     <TouchableOpacity
       style={styles.button}
-      onPress={() => alert("Button Pressed!")}
+      onPress={props.onPress} // Usa la función pasada por props
     >
       <Text>{props.label}</Text>
     </TouchableOpacity>

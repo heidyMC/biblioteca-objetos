@@ -1,9 +1,10 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
-// Simulación de datos (puedes traerlos de un contexto, API, etc.)
+
+
 const productos = [
   {
     id: '1',
@@ -107,7 +108,7 @@ export default function DetalleProducto() {
       <TouchableOpacity
         style={styles.button}
         onPress={() => {
-          // Acción de alquilar
+          router.push('/rental screen'); // Redirige a rentalScreen
         }}
       >
         <Text style={styles.buttonText}>Alquilar</Text>

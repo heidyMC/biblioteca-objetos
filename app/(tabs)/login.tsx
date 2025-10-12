@@ -1,6 +1,5 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native'
-import React, { useState } from 'react'
-import ModalComponent from '@/components/ui/modal-component';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const RegisterView = () => {
   const [email, setEmail] = useState<string>('');
@@ -25,15 +24,6 @@ const RegisterView = () => {
           onChangeText={setEmail}
         />
      
-      <Text style={styles.label}>Correo electrónico</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ingresa tu correo"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-
       {/* Contraseña */}
       <Text style={styles.label}>Contraseña</Text>
       <TextInput
@@ -70,11 +60,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#060606ff',
     marginBottom: 30,
   },
   label: {
-    color: '#FFFFFF', // Color blanco para los textos de los campos
+    color: '#060606ff', // Color para los textos de los campos
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,

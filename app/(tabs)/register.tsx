@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const RegisterView = () => {
   const [name, setName] = useState<string>('');
@@ -79,11 +79,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '# ',
     marginBottom: 30,
   },
   label: {
-    color: '#FFFFFF',
+    color: '#0e0d0dff',
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
