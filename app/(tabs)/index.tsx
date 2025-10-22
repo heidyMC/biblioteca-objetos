@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import HomePage from "./HomePage";
+import HomePage from "./LOGIN/HomePage";
 
 export default function HomeScreen() {
   return (
