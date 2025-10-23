@@ -4,11 +4,13 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 
 const RegisterView = () => {
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  const [phone, setPhone] = useState<string>(''); // 👈 nuevo campo
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
 
   const handleRegister = () => {
-    alert("Cuenta creada con éxito!");
+    // Aquí luego conectarás con Supabase
+    alert(`Cuenta creada con éxito!\nNombre: ${name}\nTeléfono: ${phone}`);
   };
 
   return (
@@ -33,6 +35,16 @@ const RegisterView = () => {
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+        />
+
+        {/* Teléfono */}
+        <Text style={styles.label}>Teléfono</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Ingresa tu número"
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
         />
 
         {/* Contraseña */}
@@ -80,12 +92,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     padding: 20,
-    marginTop: 100, // 🔹 Solo baja el contenido, no la pantalla
+    marginTop: 100,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#060606', // ✅ corregido (antes era '# ')
+    color: '#060606',
     marginBottom: 30,
   },
   label: {
