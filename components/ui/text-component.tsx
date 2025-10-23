@@ -1,21 +1,28 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TextStyle } from 'react-native';
 import React from 'react';
+
 type TextComponentProps = {
   text: string;
   textColor?: string;
   textSize?: number;
   fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900';
+  style?: TextStyle; // <- agregamos la prop style opcional
 };
 
-const TextComponent = ({ text, textColor = '#333', textSize = 20, fontWeight = 'normal' }: TextComponentProps) => {
+const TextComponent = ({
+  text,
+  textColor = '#333',
+  textSize = 20,
+  fontWeight = 'normal',
+  style,
+}: TextComponentProps) => {
   return (
-    <View style={styles.container}>
-      <Text style={[styles.text, { color: textColor, fontSize: textSize, fontWeight }]}>
-        {text}
-      </Text>
-    </View>
+    <Text style={[{ color: textColor, fontSize: textSize, fontWeight }, style]}>
+      {text}
+    </Text>
   );
 };
+
 
 export default TextComponent;
 

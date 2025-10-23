@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TextStyle } from 'react-native';
 import React from 'react';
 
 interface InputComponentProps {
@@ -8,6 +8,7 @@ interface InputComponentProps {
   onChange: (text: string) => void;
   inputColor?: string;
   fontSize?: number;
+  style?:TextStyle;
 }
 
 const InputComponent: React.FC<InputComponentProps> = ({ label, placeholder, value, onChange, inputColor = '#333', fontSize = 18 }) => {

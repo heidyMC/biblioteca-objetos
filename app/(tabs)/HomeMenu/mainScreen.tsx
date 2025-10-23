@@ -3,7 +3,7 @@ import TextComponent from '@/components/ui/text-component';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import { supabase } from '@/lib/supabase'; 
+import { supabase } from '@/lib/supabase';
 
 interface Producto {
   id: string;
@@ -23,9 +23,7 @@ const MainScreen = () => {
   useEffect(() => {
     const fetchProductos = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('objetos')
-        .select('*');
+      const { data, error } = await supabase.from('objetos').select('*');
 
       if (error) {
         console.error('Error fetching products:', error.message);
@@ -40,35 +38,41 @@ const MainScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Perfil y tokens */}
-      <View style={styles.profile}>
-        <View style={styles.profileLeft}>
+      {/* Encabezado: perfil + buscador */}
+      <View style={styles.header}>
+        <View style={styles.profileSection}>
           <Image
             source={{ uri: 'https://randomuser.me/api/portraits/men/44.jpg' }}
             style={styles.profileImage}
           />
-          <TextComponent text="María" fontWeight="bold" textSize={16} />
+          <View>
+            <TextComponent text="María" fontWeight="bold" textSize={16} />
+            <TextComponent text="💰 600 tokens" textSize={13} textColor="#555" />
+          </View>
         </View>
-        <TextComponent text="💰 600 tokens" fontWeight="bold" textSize={15} />
+
+        <View style={styles.searchContainer}>
+          <InputComponent
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar objeto..."
+            fontSize={14}
+            inputColor="#333"
+          />
+        </View>
       </View>
 
       {/* Título */}
-      <TextComponent text="Biblioteca de objetos" fontWeight="bold" textSize={22} />
+      <TextComponent
+        text="Biblioteca de objetos"
+        fontWeight="bold"
+        textSize={22}
+        textColor="#1E293B"
+      />
 
-      {/* Buscador */}
-      <View style={styles.searchContainer}>
-        <InputComponent
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar"
-          fontSize={14}
-          inputColor="#333"
-        />
-      </View>
-
-      {/* Productos */}
+      {/* Lista de productos */}
       {loading ? (
-        <ActivityIndicator size="large" color="#1E90FF" />
+        <ActivityIndicator size="large" color="#1E90FF" style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.productGrid}>
           {productos
@@ -76,22 +80,33 @@ const MainScreen = () => {
               item.nombre.toLowerCase().includes(search.toLowerCase())
             )
             .map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.card}
-                onPress={() => router.push(`./detalleProducto?id=${item.id}`)}
-              >
+              <TouchableOpacity key={item.id} style={styles.card}>
                 <Image source={{ uri: item.imagen_url }} style={styles.cardImage} />
-                <TextComponent text={item.nombre} fontWeight="bold" textSize={16} />
-                <TextComponent text={`💰 ${item.precio_tokens_dia} tokens/día`} textSize={14} />
-                <TextComponent text={`⭐ ${item.calificacion_promedio}`} textSize={13} />
+                <TextComponent
+                  text={item.nombre}
+                  fontWeight="bold"
+                  textSize={16}
+                  style={{ marginBottom: 4 }}
+                />
+                <TextComponent
+                  text={`$ ${item.precio_tokens_dia} tokens/día`}
+                  textSize={14}
+                  style={{ marginBottom: 4 }}
+                />
+                <TextComponent
+                  text={`★ ${item.calificacion_promedio}`}
+                  textSize={13}
+                  textColor="black"
+                  style={{ marginBottom: 4 }}
+                />
                 <TextComponent
                   text={item.disponible ? 'Disponible' : 'No disponible'}
                   textSize={12}
                   fontWeight="bold"
-                  textColor={item.disponible ? 'green' : ' red'}
+                  textColor={item.disponible ? 'green' : 'red'}
                 />
               </TouchableOpacity>
+
             ))}
         </ScrollView>
       )}
@@ -104,18 +119,19 @@ export default MainScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 25,
+    paddingTop: 50,
     backgroundColor: '#f7f7f7',
   },
-  profile: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  header: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
     marginBottom: 20,
   },
-  profileLeft: {
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 30,
   },
   profileImage: {
     width: 45,
@@ -124,13 +140,20 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   searchContainer: {
-    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   productGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   card: {
     width: '47%',
@@ -147,8 +170,9 @@ const styles = StyleSheet.create({
   },
   cardImage: {
     width: '100%',
-    height: 100,
-    resizeMode: 'contain',
+    height: 90, // más compacto verticalmente
+    resizeMode: 'cover',
+    borderRadius: 10, // bordes redondeados
     marginBottom: 10,
   },
 });
