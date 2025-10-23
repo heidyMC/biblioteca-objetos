@@ -1,12 +1,40 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../../../lib/supabase';
 
-const RegisterView = () => {
+const LoginView = () => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
 
-  const handleRegister = () => {
-    alert("Registro exitoso!");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Por favor ingresa correo y contraseña");
+      return;
+    }
+
+    try {
+      // Consulta a la tabla usuarios
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('correo', email)
+        .eq('contrasenia', password)
+        .single(); // Esperamos un solo usuario
+
+      if (error || !data) {
+        Alert.alert("Error", "Credenciales inválidas");
+        return;
+      }
+
+      // Login exitoso
+      Alert.alert("¡Éxito!", `Bienvenido ${data.nombre}`);
+
+      // Aquí podrías redirigir al usuario a la pantalla principal, ejemplo:
+      // router.push('/HomePage');
+
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    }
   };
 
   return (
@@ -33,25 +61,20 @@ const RegisterView = () => {
         onChangeText={setPassword}
       />
 
-      {/* Olvidaste tu contraseña */}
-      <TouchableOpacity>
-        <Text style={styles.forgotPassword}>¿Olvidaste tu contraseña?</Text>
-      </TouchableOpacity>
-
-      {/* Botón de Registro */}
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Registrar</Text>
+      {/* Botón de login */}
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>Iniciar Sesión</Text>
       </TouchableOpacity>
     </View>
-  )
-}
+  );
+};
 
-export default RegisterView;
+export default LoginView;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff', // Fondo blanco limpio
+    backgroundColor: '#fff',
     padding: 20,
     justifyContent: 'center',
     alignItems: 'center',
@@ -93,12 +116,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  forgotPassword: {
-    color: '#1E90FF',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 25,
-    marginTop: -10,
   },
 });

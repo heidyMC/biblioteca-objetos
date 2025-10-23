@@ -1,16 +1,65 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
+import { supabase } from '../../../lib/supabase';
 
 const RegisterView = () => {
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [phone, setPhone] = useState<string>(''); // 👈 nuevo campo
+  const [phone, setPhone] = useState<string>(''); // campo teléfono
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
 
-  const handleRegister = () => {
-    // Aquí luego conectarás con Supabase
-    alert(`Cuenta creada con éxito!\nNombre: ${name}\nTeléfono: ${phone}`);
+  const handleRegister = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      alert("Por favor completa todos los campos");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("Las contraseñas no coinciden");
+      return;
+    }
+
+    try {
+      
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      const userId = authData.user?.id;
+      if (!userId) {
+        alert("Error al crear usuario");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('usuarios')
+        .insert([
+          {
+            id: userId,
+            nombre: name,
+            tokens_disponibles: 150, 
+            telefono: phone,
+            correo: email,        
+            contrasenia: password,  
+          },
+        ]);
+
+      if (error) throw error;
+
+      alert("Cuenta creada con éxito!");
+      setName('');
+      setEmail('');
+      setPhone('');
+      setPassword('');
+      setConfirmPassword('');
+
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    }
   };
 
   return (
