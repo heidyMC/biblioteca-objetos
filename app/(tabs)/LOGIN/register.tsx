@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { supabase } from '../../../lib/supabase';
+import { useRouter } from 'expo-router';
 
 const RegisterView = () => {
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [phone, setPhone] = useState<string>(''); // campo teléfono
+  const [phone, setPhone] = useState<string>(''); 
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const router = useRouter();
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -21,7 +23,6 @@ const RegisterView = () => {
     }
 
     try {
-      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -50,7 +51,16 @@ const RegisterView = () => {
 
       if (error) throw error;
 
-      alert("Cuenta creada con éxito!");
+  
+      Alert.alert(
+        "¡Cuenta creada!",
+        "Tu cuenta ha sido creada correctamente.",
+        [
+          { text: "OK", onPress: () => router.replace('/(tabs)/HomeMenu/mainScreen') }
+        ]
+      );
+
+   
       setName('');
       setEmail('');
       setPhone('');

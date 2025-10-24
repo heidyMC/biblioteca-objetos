@@ -41,7 +41,7 @@ export default function DetalleProducto() {
       <View style={styles.profile}>
         <View style={styles.profileLeft}>
           <Image
-            source={{ uri: 'https://randomuser.me/api/portraits/women/44.jpg' }}
+            source={{ uri: 'https://i.ibb.co/ZpJTDJB3/Destornillador.jpg' }}
             style={styles.profileImage}
           />
           <Text style={styles.boldText}>Maria</Text>
