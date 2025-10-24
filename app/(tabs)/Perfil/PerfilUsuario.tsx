@@ -39,6 +39,14 @@ const Perfil = () => {
     router.replace('/(tabs)/LOGIN/HomePage');
   };
 
+  const hadlehistorialCompra = async()=>{
+    console.log("historial de compra");
+  };
+
+  const handleRanking = async()=>{
+    console.log("ranking de ususarios");
+  };
+
   const irAHome = () => {
     router.push('/(tabs)/HomeMenu/mainScreen');
   };
@@ -111,7 +119,14 @@ const Perfil = () => {
           </View>
         )}
       </View>
-
+      {/*boton historial de compra*/ }
+      <TouchableOpacity style={styles.buttonHistorial} onPress={hadlehistorialCompra}>
+        <Text style={styles.textHistorial}>Historial de Alquileres</Text>
+      </TouchableOpacity>
+      {/*boton Ranking con mas ususarios*/} 
+      <TouchableOpacity style={styles.buttonRanking} onPress={handleRanking}>
+        <Text style={styles.textRanking}>Ranking de ususarios por Tokens</Text>
+      </TouchableOpacity>
       {/* Botón Cerrar sesión */}
       <TouchableOpacity style={styles.button} onPress={handleCerrarSesion}>
         <Text style={styles.buttonText}>Cerrar sesión</Text>
@@ -209,5 +224,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  buttonHistorial: {
+  backgroundColor: '#3774b0ff', 
+  paddingVertical: 12,
+  paddingHorizontal: 80,
+  marginTop: 20,
+  },
+  textHistorial: {
+    color: '#070707ff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  buttonRanking: {
+    backgroundColor: '#3774b0ff', 
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    
+    marginTop: 20,
+  },
+  textRanking: {
+    color: '#070707ff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
