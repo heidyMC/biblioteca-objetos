@@ -1,193 +1,217 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../../lib/supabase';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import TextComponent from '@/components/ui/text-component';
+import { View, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 
+interface Usuario {
+  id: string;
+  nombre: string;
+  correo: string;
+  foto_url: string;
+  tokens_disponibles: number;
+}
 
+interface Producto {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  precio_tokens_dia: number;
+  calificacion_promedio: number;
+  disponible: boolean;
+  imagen_url: string;
+}
 
-const productos = [
-  {
-    id: '1',
-    nombre: 'Taladro',
-    marca: 'Bowoshen',
-    fuente: 'batería',
-    velocidad: '1.4E+3 RPM',
-    voltaje: '21 Voltios',
-    amperaje: '21 Amperios',
-    precio: '$40 por día',
-    rating: 4.78,
-    imagen: 'https://cdn-icons-png.flaticon.com/512/64/64113.png',
-    descripcion:
-      'Taladro inalámbrico rojo de 21 V máximo, juego de taladro eléctrico con par de 45 NM, kit de herramientas con batería de iones de litio de 1500',
-    ubicacion: { lat: -12.0464, lng: -77.0428 },
-    resena: {
-      usuario: 'Nathan Smith',
-      fecha: '16 de junio de 2025',
-      comentario:
-        'Es fácil de usar, segura. La comunidad es muy activa y todo funciona bastante bien.',
-      rating: 5,
-      avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-    },
-  },
-];
+interface CaracteristicaObjeto {
+  id: string;
+  objeto_id: string;
+  nombre: string;
+  valor: string;
+  objetos: Producto;
+}
 
-export default function DetalleProducto() {
-  const { id } = useLocalSearchParams();
-  const producto = productos.find((p) => p.id === id) || productos[0]; // fallback
+const CaracteristicasObjetos = () => {
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
+  const searchParams = useLocalSearchParams();
+  const productoId = searchParams.id;
+
+  useEffect(() => {
+    const cargarUsuario = async () => {
+      const userData = await AsyncStorage.getItem('usuario');
+      if (userData) setUsuario(JSON.parse(userData));
+    };
+    cargarUsuario();
+  }, []);
+
+  useEffect(() => {
+    const fetchCaracteristicas = async () => {
+      if (!productoId) return;
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from('caracteristicas_objeto')
+        .select(`
+          id,
+          objeto_id,
+          nombre,
+          valor,
+          objetos (
+            id,
+            nombre,
+            descripcion,
+            imagen_url
+          )
+        `)
+        .eq('objeto_id', productoId);
+
+      if (error) {
+        console.error('Error al obtener características:', error.message);
+      } else {
+        const datosProcesados =
+          data?.map((item: any) => ({
+            ...item,
+            objetos: Array.isArray(item.objetos) ? item.objetos[0] : item.objetos,
+          })) || [];
+        setCaracteristicas(datosProcesados);
+      }
+      setLoading(false);
+    };
+
+    fetchCaracteristicas();
+  }, [productoId]);
+
+  const caracteristicasAgrupadas = caracteristicas.reduce((acc, item) => {
+    const objId = item.objeto_id;
+    if (!acc[objId]) {
+      acc[objId] = {
+        objeto: item.objetos,
+        caracteristicas: [],
+      };
+    }
+    acc[objId].caracteristicas.push({ nombre: item.nombre, valor: item.valor });
+    return acc;
+  }, {} as Record<string, { objeto: Producto; caracteristicas: { nombre: string; valor: string }[] }>);
 
   return (
     <View style={styles.container}>
-      {/* Perfil y tokens */}
-      <View style={styles.profile}>
-        <View style={styles.profileLeft}>
-          <Image
-            source={{ uri: 'https://i.ibb.co/ZpJTDJB3/Destornillador.jpg' }}
-            style={styles.profileImage}
-          />
-          <Text style={styles.boldText}>Maria</Text>
-        </View>
-        <Text style={styles.boldText}>💰600 tokens</Text>
-      </View>
-
-      {/* Detalles */}
-      <Text style={styles.sectionTitle}>Detalles</Text>
-
-      <View style={styles.row}>
-        <Image source={{ uri: producto.imagen }} style={styles.productImage} />
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.boldText}>{producto.nombre}</Text>
-          <Text>Marca: {producto.marca}</Text>
-          <Text>Fuente de alimentación: {producto.fuente}</Text>
-          <Text>Velocidad máxima de rotación: {producto.velocidad}</Text>
-          <Text>Voltaje: {producto.voltaje}</Text>
-          <Text>Amperaje: {producto.amperaje}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.boldText}>
-        {producto.precio} ★{producto.rating}
-      </Text>
-      <Text>{producto.descripcion}</Text>
-
-      {/* Ubicación con react-native-maps */}
-      <Text style={styles.sectionTitle}>Ubicación</Text>
-      <MapView
-        style={styles.mapView}
-        initialRegion={{
-          latitude: producto.ubicacion.lat,
-          longitude: producto.ubicacion.lng,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-      >
-        <Marker
-          coordinate={{
-            latitude: producto.ubicacion.lat,
-            longitude: producto.ubicacion.lng,
-          }}
-          title={producto.nombre}
-          description={`Ubicación del producto: ${producto.marca}`}
-        />
-      </MapView>
-
-      {/* Reseñas */}
-      <Text style={styles.sectionTitle}>Reseñas</Text>
-      <View style={styles.reviewCard}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Image source={{ uri: producto.resena.avatar }} style={styles.reviewAvatar} />
-          <View style={{ marginLeft: 8 }}>
-            <Text style={styles.boldText}>{producto.resena.usuario}</Text>
-            <Text>★{producto.resena.rating}</Text>
-            <Text style={{ fontSize: 12, color: '#555' }}>{producto.resena.fecha}</Text>
+      {/* Encabezado */}
+      <View style={styles.header}>
+        <View style={styles.profileSection}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/Perfil/PerfilUsuario')}>
+            <Image
+              source={{
+                uri: usuario?.foto_url || 'https://placehold.co/100x100?text=Sin+Foto',
+              }}
+              style={styles.profileImage}
+            />
+          </TouchableOpacity>
+          <View>
+            <TextComponent text={usuario?.nombre || 'Cargando...'} fontWeight="bold" textSize={16} />
+            <TextComponent text={`💰 ${usuario?.tokens_disponibles ?? 0} tokens`} textSize={13} textColor="#555" />
           </View>
         </View>
-        <Text>{producto.resena.comentario}</Text>
       </View>
 
-      {/* Botón */}
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => {
-          router.push('/rental screen'); // Redirige a rentalScreen
-        }}
-      >
-        <Text style={styles.buttonText}>Alquilar</Text>
-      </TouchableOpacity>
+      <TextComponent text="Características de los Objetos" fontWeight="bold" textSize={22} textColor="#1E293B" />
+
+      {loading ? (
+        <ActivityIndicator size="large" color="#1E90FF" style={{ marginTop: 40 }} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {Object.values(caracteristicasAgrupadas).map(({ objeto, caracteristicas }) => (
+            <View key={objeto.id}>
+              {/* Card con imagen + características */}
+              <View style={styles.card}>
+                <Image source={{ uri: objeto?.imagen_url || 'https://placehold.co/150x150' }} style={styles.cardImage} />
+
+                <View style={styles.infoContainer}>
+                  <TextComponent text={objeto?.nombre || 'Sin nombre'} fontWeight="bold" textSize={16} />
+                  {caracteristicas.map((c, index) => (
+                    <TextComponent
+                      key={index}
+                      text={`${c.nombre}: ${c.valor}`}
+                      textSize={13}
+                      textColor="#333"
+                    />
+                  ))}
+                </View>
+              </View>
+
+              {/* Descripción fuera del card */}
+              {objeto?.descripcion ? (
+                <View style={styles.descripcionContainer}>
+                  <TextComponent
+                    text={objeto.descripcion}
+                    textSize={18}
+                    textColor="#1E293B"
+                    fontWeight="500"
+                  />
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
-}
+};
+
+export default CaracteristicasObjetos;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 15,
-    backgroundColor: '#fff',
+    paddingHorizontal: 25,
+    paddingTop: 50,
+    backgroundColor: '#f7f7f7',
   },
-  profile: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
+  header: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    marginBottom: 20,
   },
-  profileLeft: {
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 30,
   },
   profileImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     marginRight: 10,
   },
-  boldText: {
-    fontWeight: 'bold',
-    fontSize: 14,
+  list: {
+    paddingBottom: 10,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  row: {
+  card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginVertical: 8,
-  },
-  productImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
-  mapView: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  reviewCard: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  reviewAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  button: {
-    alignSelf: 'center',
-    backgroundColor: '#007bff',
-    width: 200,
+    backgroundColor: '#fff',
     paddingVertical: 10,
-    borderRadius: 8,
-    marginTop: 8,
+    marginBottom: 15,
+    borderRadius: 0,
+    shadowColor: 'transparent',
+    elevation: 0,
   },
-  buttonText: {
-    textAlign: 'center',
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  cardImage: {
+    width: 140,
+    height: 140,
+    resizeMode: 'cover',
+    marginRight: 15,
+  },
+  infoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  descripcionContainer: {
+    marginTop: 10,
+    marginBottom: 20,
+    paddingHorizontal: 5,
   },
 });
