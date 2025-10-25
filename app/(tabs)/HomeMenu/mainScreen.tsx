@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase';
 import TextComponent from '@/components/ui/text-component';
 import InputComponent from '@/components/ui/input-component';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+
 
 interface Usuario {
   id: string;
@@ -30,14 +33,25 @@ const MainScreen = () => {
   const [search, setSearch] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     const cargarUsuario = async () => {
-      const userData = await AsyncStorage.getItem('usuario');
-      if (userData) setUsuario(JSON.parse(userData));
+      try {
+        const userData = await AsyncStorage.getItem('usuario');
+        if (userData) {
+          setUsuario(JSON.parse(userData));
+        } else {
+          setUsuario(null);
+        }
+      } catch (error) {
+        console.error('Error cargando usuario:', error);
+      }
     };
 
     cargarUsuario();
-  }, []);
+  }, [])
+);
+
 
   useEffect(() => {
     const fetchProductos = async () => {

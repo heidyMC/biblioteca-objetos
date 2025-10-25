@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Usuario {
@@ -9,7 +9,7 @@ interface Usuario {
   tokens_disponibles: number;
   correo: string;
   foto_url: string;
-  genero?: string; // <-- nuevo campo opcional
+  genero?: string;
 }
 
 const Perfil = () => {
@@ -17,34 +17,43 @@ const Perfil = () => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const obtenerUsuario = async () => {
-      try {
-        const data = await AsyncStorage.getItem('usuario');
-        if (data) {
-          setUsuario(JSON.parse(data));
+  useFocusEffect(
+    useCallback(() => {
+      const obtenerUsuario = async () => {
+        try {
+          const data = await AsyncStorage.getItem('usuario');
+          if (data) {
+            setUsuario(JSON.parse(data));
+          } else {
+            setUsuario(null);
+          }
+        } catch (error) {
+          console.error('Error cargando usuario:', error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error cargando usuario:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    obtenerUsuario();
-  }, []);
+      obtenerUsuario();
+    }, [])
+  );
 
   const handleCerrarSesion = async () => {
-    await AsyncStorage.removeItem('usuario');
-    router.replace('/(tabs)/LOGIN/HomePage');
+    try {
+      await AsyncStorage.clear(); 
+      setUsuario(null);
+      router.replace('/(tabs)/LOGIN/HomePage');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
   };
 
-  const hadlehistorialCompra = async()=>{
+  const hadlehistorialCompra = async () => {
     console.log("historial de compra");
   };
 
-  const handleRanking = async()=>{
-    console.log("ranking de ususarios");
+  const handleRanking = async () => {
+    console.log("ranking de usuarios");
   };
 
   const irAHome = () => {
@@ -67,11 +76,11 @@ const Perfil = () => {
     );
   }
 
-  
   const bordeColor =
     usuario.genero?.toLowerCase() === 'f' || usuario.genero?.toLowerCase() === 'femenino'
-      ? '#8A2BE2' 
-      : '#1E90FF'; 
+      ? '#8A2BE2'
+      : '#1E90FF';
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -81,7 +90,6 @@ const Perfil = () => {
         </TouchableOpacity>
 
         <Text style={styles.title}>Mi Perfil</Text>
-
         <View style={{ width: 40 }} />
       </View>
 
@@ -89,7 +97,7 @@ const Perfil = () => {
       <View style={styles.profileContainer}>
         <Image
           source={{ uri: usuario.foto_url || 'https://randomuser.me/api/portraits/men/44.jpg' }}
-          style={[styles.profileImage, { borderColor: bordeColor }]} // <-- borde dinámico
+          style={[styles.profileImage, { borderColor: bordeColor }]}
         />
 
         {/* Tokens */}
@@ -119,15 +127,17 @@ const Perfil = () => {
           </View>
         )}
       </View>
-      {/*boton historial de compra*/ }
+
+      {/* Botones adicionales */}
       <TouchableOpacity style={styles.buttonHistorial} onPress={hadlehistorialCompra}>
         <Text style={styles.textHistorial}>Historial de Alquileres</Text>
       </TouchableOpacity>
-      {/*boton Ranking con mas ususarios*/} 
+
       <TouchableOpacity style={styles.buttonRanking} onPress={handleRanking}>
-        <Text style={styles.textRanking}>Ranking de ususarios por Tokens</Text>
+        <Text style={styles.textRanking}>Ranking de usuarios por Tokens</Text>
       </TouchableOpacity>
-      {/* Botón Cerrar sesión */}
+
+      {/* Cerrar sesión */}
       <TouchableOpacity style={styles.button} onPress={handleCerrarSesion}>
         <Text style={styles.buttonText}>Cerrar sesión</Text>
       </TouchableOpacity>
@@ -226,22 +236,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   buttonHistorial: {
-  backgroundColor: '#3774b0ff', 
-  paddingVertical: 12,
-  paddingHorizontal: 80,
-  marginTop: 20,
+    backgroundColor: '#3774b0ff',
+    paddingVertical: 12,
+    paddingHorizontal: 80,
+    marginTop: 20,
   },
   textHistorial: {
     color: '#070707ff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-
   buttonRanking: {
-    backgroundColor: '#3774b0ff', 
+    backgroundColor: '#3774b0ff',
     paddingVertical: 12,
     paddingHorizontal: 30,
-    
     marginTop: 20,
   },
   textRanking: {

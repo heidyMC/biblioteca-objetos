@@ -1,3 +1,4 @@
+// LoginView.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'expo-router';
@@ -9,7 +10,14 @@ const LoginView = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-
+  const limpiarCache = async () => {
+    try {
+      await AsyncStorage.clear();
+      console.log("🧹 Caché borrado correctamente");
+    } catch (error) {
+      console.error("Error al limpiar el caché:", error);
+    }
+  };
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Por favor ingresa correo y contraseña");
@@ -28,19 +36,13 @@ const LoginView = () => {
         Alert.alert("Error", "Credenciales inválidas");
         return;
       }
-
-      // 🔥 Guardar el usuario en AsyncStorage
+      await limpiarCache();
       await AsyncStorage.setItem('usuario', JSON.stringify(data));
-
-      Alert.alert("¡Éxito!", `Bienvenido ${data.nombre}`, [
-        {
-          text: "OK",
-          onPress: () => router.push('/(tabs)/HomeMenu/mainScreen'),
-        },
-      ]);
+      Alert.alert("✅ Sesión iniciada", `Bienvenido ${data.nombre || ''}`);
+      router.replace('/(tabs)/HomeMenu/mainScreen');
 
     } catch (err: any) {
-      Alert.alert("Error", err.message);
+      Alert.alert("Error", err.message || 'Error en login');
     }
   };
 
@@ -67,7 +69,7 @@ const LoginView = () => {
           onChangeText={setPassword}
         />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-          <Text style={{ fontSize: 18 }}>{showPassword ? '🙈' : '👁️'}</Text>
+          <Text style={{ fontSize: 18 }}>{showPassword ? '**' : '*'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -81,12 +83,57 @@ const LoginView = () => {
 export default LoginView;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 20, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#060606ff', marginBottom: 40 },
-  label: { color: '#060606ff', fontSize: 16, fontWeight: 'bold', marginBottom: 8, width: '80%' },
-  input: { width: '80%', padding: 12, backgroundColor: '#FFFFFF', borderRadius: 8, borderColor: '#ccc', borderWidth: 1, color: '#333', fontSize: 16 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', width: '80%', marginBottom: 20 },
-  eyeButton: { marginLeft: 10 },
-  button: { backgroundColor: '#1E90FF', paddingVertical: 15, borderRadius: 50, alignItems: 'center', justifyContent: 'center', width: '80%', marginTop: 10 },
-  buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff', 
+    padding: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    color: '#060606ff', 
+    marginBottom: 40 
+  },
+  label: { 
+    color: '#060606ff', 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    marginBottom: 8, 
+    width: '80%' 
+  },
+  input: { 
+    width: '80%', 
+    padding: 12, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 8, 
+    borderColor: '#ccc', 
+    borderWidth: 1, 
+    color: '#333', 
+    fontSize: 16 
+  },
+  passwordContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    width: '80%', 
+    marginBottom: 20 
+  },
+  eyeButton: { 
+    marginLeft: 10 
+  },
+  button: { 
+    backgroundColor: '#1E90FF', 
+    paddingVertical: 15, 
+    borderRadius: 50, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    width: '80%', 
+    marginTop: 10 
+  },
+  buttonText: { 
+    color: '#FFFFFF', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
+  },
 });
