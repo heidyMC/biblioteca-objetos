@@ -1,12 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
-import { View, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import TextComponent from '@/components/ui/text-component';
-import InputComponent from '@/components/ui/input-component';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 
 interface Usuario {
@@ -33,25 +30,21 @@ const MainScreen = () => {
   const [search, setSearch] = useState('');
   const router = useRouter();
 
-useFocusEffect(
-  useCallback(() => {
-    const cargarUsuario = async () => {
-      try {
-        const userData = await AsyncStorage.getItem('usuario');
-        if (userData) {
-          setUsuario(JSON.parse(userData));
-        } else {
-          setUsuario(null);
+  useFocusEffect(
+    useCallback(() => {
+      const cargarUsuario = async () => {
+        try {
+          const userData = await AsyncStorage.getItem('usuario');
+          if (userData) setUsuario(JSON.parse(userData));
+          else setUsuario(null);
+        } catch (error) {
+          console.error('Error cargando usuario:', error);
         }
-      } catch (error) {
-        console.error('Error cargando usuario:', error);
-      }
-    };
+      };
 
-    cargarUsuario();
-  }, [])
-);
-
+      cargarUsuario();
+    }, [])
+  );
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -67,38 +60,42 @@ useFocusEffect(
 
   return (
     <View style={styles.container}>
+      {/* CABECERA */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-  <TouchableOpacity
-    onPress={() => router.push('/(tabs)/Perfil/PerfilUsuario')} // 👈 redirige a tu nueva pantalla
-  >
-    <Image
-      source={{
-        uri:
-          usuario?.foto_url ||
-          'https://placehold.co/100x100?text=Sin+Foto',
-      }}
-      style={styles.profileImage}
-    />
-  </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/Perfil/PerfilUsuario')}>
+            <Image
+              source={{
+                uri: usuario?.foto_url || 'https://placehold.co/100x100?text=Sin+Foto',
+              }}
+              style={styles.profileImage}
+            />
+          </TouchableOpacity>
 
-  <View>
-    <TextComponent
-      text={usuario?.nombre || 'Cargando...'}
-      fontWeight="bold"
-      textSize={16}
-    />
-    <TextComponent
-      text={`💰 ${usuario?.tokens_disponibles ?? 0} tokens`}
-      textSize={13}
-      textColor="#555"
-    />
-  </View>
-</View>
-
+          <View>
+            <TextComponent text={usuario?.nombre || 'Cargando...'} fontWeight="bold" textSize={16} />
+            <TextComponent text={`💰 ${usuario?.tokens_disponibles ?? 0} tokens`} textSize={13} textColor="#555" />
+          </View>
+        </View>
+          {/* BUSCADOR */}
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Buscar objeto..."
+                value={search}
+                onChangeText={setSearch}
+              />
+            </View>
+        
       </View>
-
-      <TextComponent text="Biblioteca de objetos" fontWeight="bold" textSize={22} textColor="#1E293B" />
+   
+      {/*Titulo */}
+      <TextComponent
+        text="Biblioteca de objetos"
+        fontWeight="bold"
+        textSize={22}
+        textColor="#1E293B"
+      />
 
       {loading ? (
         <ActivityIndicator size="large" color="#1E90FF" style={{ marginTop: 40 }} />
@@ -132,7 +129,6 @@ useFocusEffect(
 
 export default MainScreen;
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -148,7 +144,7 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   profileImage: {
     width: 45,
@@ -159,12 +155,24 @@ const styles = StyleSheet.create({
   searchContainer: {
     backgroundColor: '#fff',
     borderRadius: 10,
-    padding: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    height: 60,
+    width: '65%',
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+    marginBottom: 5,
+  },
+  searchInput: {
+    height: 40,
+    fontSize: 16,
+    color: '#333',
+    paddingTop:6,
+    paddingBottom: 2, 
+    includeFontPadding: false, 
+    textAlignVertical: 'center',
   },
   productGrid: {
     flexDirection: 'row',
@@ -193,3 +201,4 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 });
+

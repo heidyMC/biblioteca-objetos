@@ -132,7 +132,7 @@ const RegisterView = () => {
         </TouchableOpacity>
 
         {/* Texto de iniciar sesión */}
-        <TouchableOpacity>
+        <TouchableOpacity onPress={ ()=> router.push('/(tabs)/LOGIN/login')}>
           <Text style={styles.loginText}>¿Ya tienes cuenta? Inicia sesión</Text>
         </TouchableOpacity>
       </View>

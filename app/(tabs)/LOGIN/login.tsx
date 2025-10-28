@@ -1,15 +1,70 @@
-// LoginView.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
+
+WebBrowser.maybeCompleteAuthSession();
+
 
 const LoginView = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  const signInWithGoogle = async () => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'exp://127.0.0.1:19000' }, 
+    });
+
+    if (error) throw error;
+
+        if (data.url) {
+          const res = await WebBrowser.openAuthSessionAsync(data.url);
+
+          if (res.type === 'success') {
+            const { data: userData, error: userError } = await supabase.auth.getUser();
+            if (userError) throw userError;
+
+            const user = userData.user;
+            if (!user) return;
+
+           
+            const { data: existing } = await supabase
+              .from('usuarios')
+              .select('*')
+              .eq('id', user.id)
+              .maybeSingle();
+
+            if (!existing) {
+            
+              await supabase.from('usuarios').insert([
+                {
+                  id: user.id,
+                  nombre: user.user_metadata.full_name || 'Usuario Google',
+                  correo: user.email,
+                  foto_url: user.user_metadata.avatar_url,
+                  tokens_disponibles: 150,
+                },
+              ]);
+            }
+
+            await AsyncStorage.setItem('usuario', JSON.stringify(user));
+            Alert.alert('Bienvenido', `Has iniciado sesión como ${user.email}`);
+            router.replace('/(tabs)/HomeMenu/mainScreen');
+          }
+        }
+      } catch (error) {
+        console.error('Error al iniciar sesión con Google:', error);
+        Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+      }
+    };
+
   const limpiarCache = async () => {
     try {
       await AsyncStorage.clear();
@@ -38,7 +93,7 @@ const LoginView = () => {
       }
       await limpiarCache();
       await AsyncStorage.setItem('usuario', JSON.stringify(data));
-      Alert.alert("✅ Sesión iniciada", `Bienvenido ${data.nombre || ''}`);
+      Alert.alert("Sesión iniciada", `Bienvenido ${data.nombre || ''}`);
       router.replace('/(tabs)/HomeMenu/mainScreen');
 
     } catch (err: any) {
@@ -72,6 +127,9 @@ const LoginView = () => {
           <Text style={{ fontSize: 18 }}>{showPassword ? '**' : '*'}</Text>
         </TouchableOpacity>
       </View>
+      <TouchableOpacity style={[styles.button, { backgroundColor: '#DB4437' }]} onPress={signInWithGoogle}>
+        <Text style={styles.buttonText}>Iniciar sesión con Google</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Iniciar Sesión</Text>

@@ -6,7 +6,7 @@ const LogoImg = require('../../../assets/images/login-images.png');
 
 export default function InicioScreen() {
   const router = useRouter();
-  const { height } = Dimensions.get('window'); // para ajustar tamaños según pantalla
+  const { height } = Dimensions.get('window'); 
 
   return (
     <View style={styles.container}>
