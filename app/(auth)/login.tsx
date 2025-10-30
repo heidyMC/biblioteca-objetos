@@ -1,10 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
+import { supabase } from '../../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -16,54 +15,54 @@ const LoginView = () => {
   const router = useRouter();
 
   const signInWithGoogle = async () => {
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: 'exp://127.0.0.1:19000' }, 
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: 'exp://127.0.0.1:19000' },
+      });
 
-    if (error) throw error;
+      if (error) throw error;
 
-        if (data.url) {
-          const res = await WebBrowser.openAuthSessionAsync(data.url);
+      if (data.url) {
+        const res = await WebBrowser.openAuthSessionAsync(data.url);
 
-          if (res.type === 'success') {
-            const { data: userData, error: userError } = await supabase.auth.getUser();
-            if (userError) throw userError;
+        if (res.type === 'success') {
+          const { data: userData, error: userError } = await supabase.auth.getUser();
+          if (userError) throw userError;
 
-            const user = userData.user;
-            if (!user) return;
+          const user = userData.user;
+          if (!user) return;
 
-           
-            const { data: existing } = await supabase
-              .from('usuarios')
-              .select('*')
-              .eq('id', user.id)
-              .maybeSingle();
 
-            if (!existing) {
-            
-              await supabase.from('usuarios').insert([
-                {
-                  id: user.id,
-                  nombre: user.user_metadata.full_name || 'Usuario Google',
-                  correo: user.email,
-                  foto_url: user.user_metadata.avatar_url,
-                  tokens_disponibles: 150,
-                },
-              ]);
-            }
+          const { data: existing } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('id', user.id)
+            .maybeSingle();
 
-            await AsyncStorage.setItem('usuario', JSON.stringify(user));
-            Alert.alert('Bienvenido', `Has iniciado sesión como ${user.email}`);
-            router.replace('/(tabs)/HomeMenu/mainScreen');
+          if (!existing) {
+
+            await supabase.from('usuarios').insert([
+              {
+                id: user.id,
+                nombre: user.user_metadata.full_name || 'Usuario Google',
+                correo: user.email,
+                foto_url: user.user_metadata.avatar_url,
+                tokens_disponibles: 150,
+              },
+            ]);
           }
+
+          await AsyncStorage.setItem('usuario', JSON.stringify(user));
+          Alert.alert('Bienvenido', `Has iniciado sesión como ${user.email}`);
+          router.replace('/(tabs)/HomeMenu/mainScreen');
         }
-      } catch (error) {
-        console.error('Error al iniciar sesión con Google:', error);
-        Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
       }
-    };
+    } catch (error) {
+      console.error('Error al iniciar sesión con Google:', error);
+      Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+    }
+  };
 
   const limpiarCache = async () => {
     try {
@@ -141,57 +140,57 @@ const LoginView = () => {
 export default LoginView;
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#fff', 
-    padding: 20, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#060606ff', 
-    marginBottom: 40 
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#060606ff',
+    marginBottom: 40
   },
-  label: { 
-    color: '#060606ff', 
-    fontSize: 16, 
-    fontWeight: 'bold', 
-    marginBottom: 8, 
-    width: '80%' 
+  label: {
+    color: '#060606ff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    width: '80%'
   },
-  input: { 
-    width: '80%', 
-    padding: 12, 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 8, 
-    borderColor: '#ccc', 
-    borderWidth: 1, 
-    color: '#333', 
-    fontSize: 16 
+  input: {
+    width: '80%',
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    color: '#333',
+    fontSize: 16
   },
-  passwordContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    width: '80%', 
-    marginBottom: 20 
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '80%',
+    marginBottom: 20
   },
-  eyeButton: { 
-    marginLeft: 10 
+  eyeButton: {
+    marginLeft: 10
   },
-  button: { 
-    backgroundColor: '#1E90FF', 
-    paddingVertical: 15, 
-    borderRadius: 50, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    width: '80%', 
-    marginTop: 10 
+  button: {
+    backgroundColor: '#1E90FF',
+    paddingVertical: 15,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '80%',
+    marginTop: 10
   },
-  buttonText: { 
-    color: '#FFFFFF', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold'
   },
 });

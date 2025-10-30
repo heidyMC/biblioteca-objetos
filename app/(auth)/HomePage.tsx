@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import React from 'react';
+import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const LogoImg = require('../../../assets/images/login-images.png');
+const LogoImg = require('../../assets/images/login-images.png');
 
 export default function InicioScreen() {
   const router = useRouter();
-  const { height } = Dimensions.get('window'); 
+  const { height } = Dimensions.get('window');
 
   return (
     <View style={styles.container}>
@@ -18,14 +18,14 @@ export default function InicioScreen() {
       <View style={styles.buttonsContainer}>
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#1E90FF' }]}
-          onPress={() => router.push('/(tabs)/LOGIN/login')}
+          onPress={() => router.push('/(auth)/login')}
         >
           <Text style={styles.buttonText}>Iniciar Sesión</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, { backgroundColor: '#1E90FF' }]}
-          onPress={() => router.push('/(tabs)/LOGIN/register')}
+          onPress={() => router.push('/(auth)/register')}
         >
           <Text style={styles.buttonText}>Registrarse</Text>
         </TouchableOpacity>

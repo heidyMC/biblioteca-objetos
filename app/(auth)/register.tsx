@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
-import { supabase } from '../../../lib/supabase';
 import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../../lib/supabase';
 
 const RegisterView = () => {
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [phone, setPhone] = useState<string>(''); 
+  const [phone, setPhone] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const router = useRouter();
@@ -42,16 +42,16 @@ const RegisterView = () => {
           {
             id: userId,
             nombre: name,
-            tokens_disponibles: 150, 
+            tokens_disponibles: 150,
             telefono: phone,
-            correo: email,        
-            contrasenia: password,  
+            correo: email,
+            contrasenia: password,
           },
         ]);
 
       if (error) throw error;
 
-  
+
       Alert.alert(
         "¡Cuenta creada!",
         "Tu cuenta ha sido creada correctamente.",
@@ -60,7 +60,7 @@ const RegisterView = () => {
         ]
       );
 
-   
+
       setName('');
       setEmail('');
       setPhone('');
@@ -132,7 +132,7 @@ const RegisterView = () => {
         </TouchableOpacity>
 
         {/* Texto de iniciar sesión */}
-        <TouchableOpacity onPress={ ()=> router.push('/(tabs)/LOGIN/login')}>
+        <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
           <Text style={styles.loginText}>¿Ya tienes cuenta? Inicia sesión</Text>
         </TouchableOpacity>
       </View>

@@ -1,9 +1,9 @@
-import React from 'react';
-import { StyleSheet, View, Image, ScrollView, TouchableOpacity } from 'react-native';
-import TextComponent from '@/components/ui/text-component';
 import ButtonComponent from '@/components/ui/button-component';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import TextComponent from '@/components/ui/text-component';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import React from 'react';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 
 const ConfirmPayScreen = () => {
   const colorScheme = useColorScheme() ?? 'light';
@@ -39,7 +39,7 @@ const ConfirmPayScreen = () => {
       <View style={styles.summaryCard}>
         {/* Fechas */}
         <View style={styles.row}>
-          <TextComponent text="Fechas" fontWeight="bold"  />
+          <TextComponent text="Fechas" fontWeight="bold" />
           <View style={styles.rowValueContainer}>
             <TextComponent text="26 - 26 de sept de 2025" />
             <TextComponent text="8:00 a.m. - 5:00 p.m." />
@@ -49,19 +49,19 @@ const ConfirmPayScreen = () => {
 
         {/* Precio */}
         <View style={styles.row}>
-          <TextComponent text="Información del precio" fontWeight="bold"  />
+          <TextComponent text="Información del precio" fontWeight="bold" />
           <TextComponent text="40 tokens por día" />
         </View>
 
         {/* Total tokens */}
         <View style={styles.row}>
-          <TextComponent text="Total Tokens" fontWeight="bold"  />
+          <TextComponent text="Total Tokens" fontWeight="bold" />
           <TextComponent text="40 tokens" />
         </View>
 
         {/* Lugar */}
         <View style={styles.row}>
-          <TextComponent text="Lugar" fontWeight="bold"  />
+          <TextComponent text="Lugar" fontWeight="bold" />
           <TextComponent text="Av Aroma & Ayacucho" />
         </View>
       </View>

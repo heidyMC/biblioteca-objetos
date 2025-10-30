@@ -16,63 +16,55 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
+      {/* Inicio: apunta a la pantalla principal del HomeMenu */}
       <Tabs.Screen
-        name="HomePage"
+        name="HomeMenu/mainScreen"
         options={{
           title: 'Inicio',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
+
+      {/* Ganar */}
       <Tabs.Screen
-        name="mainScreen"
+        name="ganar"
         options={{
-          title: 'Productos',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Ganar',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gift.fill" color={color} />,
         }}
       />
+
+      {/* Perfil (ruta dentro de Perfil/PerfilUsuario) */}
       <Tabs.Screen
-        name="perfil"
+        name="Perfil/PerfilUsuario"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+        }}
+      />
+
+      {/* Ranking */}
+      <Tabs.Screen
+        name="ranking"
+        options={{
+          title: 'Ranking',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="register"
+        name="HomeMenu/detalleProducto"
         options={{
-          href: null,
+          href: null, // ❌ Oculta de la barra de pestañas
         }}
       />
+
       <Tabs.Screen
-        name="login"
+        name="rental-screen"
         options={{
-          href: null,
+          href: null, // ❌ Oculta de la barra de pestañas
         }}
       />
-      <Tabs.Screen
-        name="detalleProducto"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="rentalScreen"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          href: null,
-        }}
-      />
+
     </Tabs>
   );
 }
