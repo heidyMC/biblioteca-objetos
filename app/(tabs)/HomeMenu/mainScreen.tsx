@@ -39,6 +39,21 @@ interface Producto {
   categorias?: { nombre: string }
 }
 
+
 export default function MainScreen() {
   return <ScrollView />
 }
+const MainScreen = () => {
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>("todas")
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const router = useRouter()
+
+  return <ScrollView />
+}
+
+export default MainScreen
