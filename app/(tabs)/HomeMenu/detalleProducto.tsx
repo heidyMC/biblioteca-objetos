@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import TextComponent from "@/components/ui/text-component"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useLocalSearchParams, useRouter } from "expo-router"
-import { useEffect, useState } from "react"
+import TextComponent from "@/components/ui/text-component";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,73 +13,84 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native"
-import MapView, { Marker } from "react-native-maps"
-import { supabase } from "../../../lib/supabase"
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import { supabase } from "../../../lib/supabase";
+import { useFocusEffect } from "@react-navigation/native";
+import React from "react";
 
 interface Usuario {
-  id: string
-  nombre: string
-  correo: string
-  foto_url: string
-  tokens_disponibles: number
+  id: string;
+  nombre: string;
+  correo: string;
+  foto_url: string;
+  tokens_disponibles: number;
 }
 
 interface Producto {
-  id: string
-  nombre: string
-  descripcion: string
-  precio_tokens_dia: number
-  calificacion_promedio: number
-  disponible: boolean
-  imagen_url: string
-  latitud?: number
-  longitud?: number
+  id: string;
+  nombre: string;
+  descripcion: string;
+  precio_tokens_dia: number;
+  calificacion_promedio: number;
+  disponible: boolean;
+  imagen_url: string;
+  latitud?: number;
+  longitud?: number;
   categorias?: {
-    nombre: string
-    descripcion: string
-  }
+    nombre: string;
+    descripcion: string;
+  };
 }
 
 interface CaracteristicaObjeto {
-  id: string
-  objeto_id: string
-  nombre: string
-  valor: string
+  id: string;
+  objeto_id: string;
+  nombre: string;
+  valor: string;
 }
 
 interface Resenia {
-  id: number
-  comentario: string
-  calificacion: number
-  created_at: string
+  id: number;
+  comentario: string;
+  calificacion: number;
+  created_at: string;
   usuarios: {
-    nombre: string
-    foto_url: string
-  }
+    nombre: string;
+    foto_url: string;
+  };
 }
 
 const DetalleProducto = () => {
-  const [usuario, setUsuario] = useState<Usuario | null>(null)
-  const [objeto, setObjeto] = useState<Producto | null>(null)
-  const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([])
-  const [reseñas, setReseñas] = useState<Resenia[]>([])
-  const [loading, setLoading] = useState(true)
-  const [comentario, setComentario] = useState("")
-  const [calificacion, setCalificacion] = useState(0)
-  const [submitting, setSubmitting] = useState(false)
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [objeto, setObjeto] = useState<Producto | null>(null);
+  const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([]);
+  const [reseñas, setReseñas] = useState<Resenia[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [comentario, setComentario] = useState("");
+  const [calificacion, setCalificacion] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
-  const router = useRouter()
-  const searchParams = useLocalSearchParams()
-  const productoId = searchParams.id
+  const router = useRouter();
+  const searchParams = useLocalSearchParams();
+  const productoId = searchParams.id as string | undefined;
 
-  useEffect(() => {
-    const cargarUsuario = async () => {
-      const userData = await AsyncStorage.getItem("usuario")
-      if (userData) setUsuario(JSON.parse(userData))
-    }
-    cargarUsuario()
-  }, [])
+  useFocusEffect(
+    useCallback(() => {
+      const cargarUsuario = async () => {
+        try {
+          const userData = await AsyncStorage.getItem("usuario");
+          if (userData) {
+            setUsuario(JSON.parse(userData));
+          }
+        } catch (e) {
+          console.warn("Error recargando usuario:", e);
+        }
+      };
+
+      cargarUsuario();
+    }, []),
+  );
 
   const fetchReseñas = async () => {
     const { data, error } = await supabase
@@ -95,12 +106,11 @@ const DetalleProducto = () => {
         )
       `)
       .eq("id_objeto", productoId)
-      .order("created_at", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error al obtener reseñas:", error.message)
+      console.error("Error al obtener reseñas:", error.message);
     } else {
-      // supabase returns the related usuarios as an array; normalize to the expected single object
       const mapped = (data || []).map(
         (d: any): Resenia => ({
           id: d.id,
@@ -109,75 +119,79 @@ const DetalleProducto = () => {
           created_at: d.created_at,
           usuarios: Array.isArray(d.usuarios) ? d.usuarios[0] : d.usuarios || { nombre: "", foto_url: "" },
         }),
-      )
-      setReseñas(mapped)
+      );
+      setReseñas(mapped);
     }
-  }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!productoId) return
-      setLoading(true)
+      if (!productoId) return;
+      setLoading(true);
 
       const { data: objetoData, error: errorObjeto } = await supabase
         .from("objetos")
-        .select(`
+        .select(
+          `
           *,
           categorias (
             nombre,
             descripcion
           )
-        `)
+        `,
+        )
         .eq("id", productoId)
-        .single()
+        .single();
 
       const { data: caracteristicasData } = await supabase
         .from("caracteristicas_objeto")
         .select("*")
-        .eq("objeto_id", productoId)
+        .eq("objeto_id", productoId);
 
       if (!errorObjeto) {
-        setObjeto(objetoData)
-        setCaracteristicas(caracteristicasData || [])
+        setObjeto(objetoData);
+        setCaracteristicas(caracteristicasData || []);
+      } else {
+        console.error("Error fetch objeto:", errorObjeto);
       }
 
-      await fetchReseñas()
-      setLoading(false)
-    }
+      await fetchReseñas();
+      setLoading(false);
+    };
 
-    fetchData()
-  }, [productoId])
+    fetchData();
+  }, [productoId]);
 
   const publicarReseña = async () => {
-    if (!usuario || !objeto) return
+    if (!usuario || !objeto) return;
     if (!comentario.trim() || calificacion === 0) {
-      Alert.alert("Error", "Por favor, completa la reseña y selecciona una calificación.")
-      return
+      Alert.alert("Error", "Por favor, completa la reseña y selecciona una calificación.");
+      return;
     }
 
-    setSubmitting(true)
+    setSubmitting(true);
 
     const { error } = await supabase.from("resenia").insert({
       id_usuario: usuario.id,
       id_objeto: objeto.id,
       comentario,
       calificacion,
-    })
+    });
 
     if (error) {
-      Alert.alert("Error", "No se pudo guardar la reseña.")
-      console.error(error.message)
+      Alert.alert("Error", "No se pudo guardar la reseña.");
+      console.error(error.message);
     } else {
-      setComentario("")
-      setCalificacion(0)
-      await fetchReseñas()
+      setComentario("");
+      setCalificacion(0);
+      await fetchReseñas();
     }
 
-    setSubmitting(false)
-  }
+    setSubmitting(false);
+  };
 
   const renderStars = (count: number) => {
-    const stars = []
+    const stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
         <TextComponent
@@ -186,10 +200,12 @@ const DetalleProducto = () => {
           textColor={i <= count ? "#FFD700" : "#D3D3D3"}
           textSize={16}
         />,
-      )
+      );
     }
-    return <View style={{ flexDirection: "row" }}>{stars}</View>
-  }
+    return <View style={{ flexDirection: "row" }}>{stars}</View>;
+  };
+
+  const canRent = !!objeto && objeto.disponible === true;
 
   return (
     <View style={styles.container}>
@@ -219,12 +235,7 @@ const DetalleProducto = () => {
 
           {objeto.categorias && (
             <View style={styles.categoryBadge}>
-              <TextComponent
-                text={`📂 ${objeto.categorias.nombre}`}
-                fontWeight="bold"
-                textSize={14}
-                textColor="#1E90FF"
-              />
+              <TextComponent text={`📂 ${objeto.categorias.nombre}`} fontWeight="bold" textSize={14} textColor="#1E90FF" />
             </View>
           )}
 
@@ -236,19 +247,11 @@ const DetalleProducto = () => {
             textColor="#111"
             style={{ marginTop: 5 }}
           />
-          {objeto.descripcion && (
-            <TextComponent text={objeto.descripcion} textSize={15} textColor="#444" style={{ marginTop: 8 }} />
-          )}
+          {objeto.descripcion && <TextComponent text={objeto.descripcion} textSize={15} textColor="#444" style={{ marginTop: 8 }} />}
 
           {caracteristicas.length > 0 && (
             <View style={styles.caracteristicasCard}>
-              <TextComponent
-                text="📋 Características"
-                fontWeight="bold"
-                textSize={18}
-                textColor="#1E293B"
-                style={{ marginBottom: 10 }}
-              />
+              <TextComponent text="📋 Características" fontWeight="bold" textSize={18} textColor="#1E293B" style={{ marginBottom: 10 }} />
               {caracteristicas.map((c) => (
                 <View key={c.id} style={styles.caracteristicaItem}>
                   <TextComponent text={`• ${c.nombre}:`} textSize={14} fontWeight="bold" textColor="#374151" />
@@ -275,28 +278,31 @@ const DetalleProducto = () => {
               </MapView>
             </View>
           )}
-
-          <TouchableOpacity style={styles.alquilarButton}>
-            <TextComponent text="🔑 Alquilar" fontWeight="bold" textSize={18} textColor="#fff" />
+          <TouchableOpacity
+            style={[styles.alquilarButton, !canRent && styles.alquilarButtonDisabled]}
+            onPress={() => {
+              if (!canRent) return; // seguro extra
+              router.push({
+                pathname: '/(tabs)/rental-screen',
+                params: { producto: JSON.stringify(objeto) },
+              });
+            }}
+            activeOpacity={canRent ? 0.8 : 1}
+            disabled={!canRent}
+            accessibilityState={{ disabled: !canRent }}
+            accessibilityLabel={canRent ? "Alquilar objeto" : "Objeto no disponible"}
+          >
+            <TextComponent text={canRent ? "🔑 Alquilar" : "⛔ No disponible"} fontWeight="bold" textSize={18} textColor="#fff" />
           </TouchableOpacity>
 
           {/* Reseñas */}
-          <TextComponent
-            text="★ Reseñas"
-            fontWeight="bold"
-            textSize={20}
-            textColor="#1E293B"
-            style={{ marginTop: 20 }}
-          />
+          <TextComponent text="★ Reseñas" fontWeight="bold" textSize={20} textColor="#1E293B" style={{ marginTop: 20 }} />
           {reseñas.length === 0 ? (
             <TextComponent text="Aún no hay reseñas." textSize={14} textColor="#6B7280" />
           ) : (
             reseñas.map((r) => (
               <View key={r.id} style={styles.reviewCard}>
-                <Image
-                  source={{ uri: r.usuarios?.foto_url || "https://placehold.co/60x60" }}
-                  style={styles.reviewerPhoto}
-                />
+                <Image source={{ uri: r.usuarios?.foto_url || "https://placehold.co/60x60" }} style={styles.reviewerPhoto} />
                 <View style={{ flex: 1 }}>
                   <TextComponent text={r.usuarios?.nombre || "Usuario"} fontWeight="bold" textSize={15} />
                   {renderStars(r.calificacion)}
@@ -313,21 +319,11 @@ const DetalleProducto = () => {
             <View style={{ flexDirection: "row", marginVertical: 6 }}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity key={star} onPress={() => setCalificacion(star)}>
-                  <TextComponent
-                    text={star <= calificacion ? "★" : "☆"}
-                    textColor={star <= calificacion ? "#FFD700" : "#D3D3D3"}
-                    textSize={24}
-                  />
+                  <TextComponent text={star <= calificacion ? "★" : "☆"} textColor={star <= calificacion ? "#FFD700" : "#D3D3D3"} textSize={24} />
                 </TouchableOpacity>
               ))}
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Escribe tu comentario..."
-              multiline
-              value={comentario}
-              onChangeText={setComentario}
-            />
+            <TextInput style={styles.input} placeholder="Escribe tu comentario..." multiline value={comentario} onChangeText={setComentario} />
             <TouchableOpacity style={styles.publishButton} onPress={publicarReseña} disabled={submitting}>
               <TextComponent text={submitting ? "Publicando..." : "Publicar"} fontWeight="bold" textColor="#fff" />
             </TouchableOpacity>
@@ -337,10 +333,10 @@ const DetalleProducto = () => {
         <TextComponent text="No se encontró el objeto." textColor="red" textSize={16} />
       )}
     </View>
-  )
-}
+  );
+};
 
-export default DetalleProducto
+export default DetalleProducto;
 
 const styles = StyleSheet.create({
   container: {
@@ -407,6 +403,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  // estilo aplicado cuando NO se puede alquilar
+  alquilarButtonDisabled: {
+    backgroundColor: "#9CA3AF",
+    opacity: 0.9,
+  },
   mapContainer: {
     marginTop: 20,
     borderRadius: 10,
@@ -458,4 +459,4 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: "center",
   },
-})
+});

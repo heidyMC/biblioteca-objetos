@@ -68,36 +68,38 @@ const MainScreen = () => {
     }, []),
   )
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     const fetchData = async () => {
-      setLoading(true)
-
-      const { data: productosData, error: errorProductos } = await supabase.from("objetos").select(`
+      setLoading(true);
+      const { data: productosData, error: errorProductos } = await supabase
+        .from("objetos")
+        .select(`
           *,
-          categorias (
-            nombre
-          )
-        `)
+          categorias ( nombre )
+        `);
 
       if (errorProductos) {
-        console.error("Error cargando productos:", errorProductos.message)
+        console.error("Error cargando productos:", errorProductos.message);
       } else {
-        setProductos(productosData || [])
+        setProductos(productosData || []);
       }
-
-      const { data: categoriasData, error: errorCategorias } = await supabase.from("categorias").select("id, nombre")
+      const { data: categoriasData, error: errorCategorias } = await supabase
+        .from("categorias")
+        .select("id, nombre");
 
       if (errorCategorias) {
-        console.error("Error cargando categorías:", errorCategorias.message)
+        console.error("Error cargando categorías:", errorCategorias.message);
       } else {
-        setCategorias(categoriasData || [])
+        setCategorias(categoriasData || []);
       }
+      setLoading(false);
+    };
 
-      setLoading(false)
-    }
-
-    fetchData()
+    fetchData();
   }, [])
+);
+
 
   const productosFiltrados = productos.filter((item) => {
     const matchSearch = item.nombre.toLowerCase().includes(search.toLowerCase())
