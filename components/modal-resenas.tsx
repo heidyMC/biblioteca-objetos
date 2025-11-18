@@ -23,14 +23,10 @@ interface Props {
 }
 
 export default function ModalResenas({ visible, onClose, userId, onSuccess }: Props) {
-  // Estado 1: Lista de alquileres pendientes de reseñar
+  // Estados
   const [pendientes, setPendientes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Estado 2: Objeto seleccionado para reseñar
   const [objetoSeleccionado, setObjetoSeleccionado] = useState<any | null>(null);
-  
-  // Estado 3: Reseñas anteriores de ese objeto
   const [reseñasAnteriores, setReseñasAnteriores] = useState<any[]>([]);
   const [loadingReseñas, setLoadingReseñas] = useState(false);
 
@@ -39,18 +35,18 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
   const [comentario, setComentario] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Cargar la lista de objetos cuando se abre el modal
+  // Cargar lista al abrir
   useEffect(() => {
     if (visible && userId) {
       cargarAlquileresPendientes();
-      // Resetear estados
+      // Resetear formulario
       setObjetoSeleccionado(null);
       setCalificacion(0);
       setComentario("");
     }
   }, [visible, userId]);
 
-  // Cuando se selecciona un objeto, cargamos sus reseñas anteriores
+  // Cargar reseñas al seleccionar objeto
   useEffect(() => {
     if (objetoSeleccionado) {
       cargarReseñasDelObjeto(objetoSeleccionado.id);
@@ -59,7 +55,6 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
   const cargarAlquileresPendientes = async () => {
     setLoading(true);
-    // Buscamos alquileres completados del usuario
     const { data, error } = await supabase
       .from("alquileres")
       .select(`
@@ -74,9 +69,8 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
       .eq("estado", "completado");
 
     if (!error && data) {
-      // Filtramos y formateamos
       const lista = data.map((item: any) => ({
-        id: item.objetos.id,      // ID del objeto
+        id: item.objetos.id,
         nombre: item.objetos.nombre,
         imagen: item.objetos.imagen_url,
         alquiler_id: item.id
@@ -88,7 +82,6 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
   const cargarReseñasDelObjeto = async (objetoId: string) => {
     setLoadingReseñas(true);
-    // Traemos reseñas de la tabla 'resenia' y unimos con 'usuarios' para ver quién comentó
     const { data, error } = await supabase
       .from("resenia")
       .select(`
@@ -103,7 +96,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
       `)
       .eq("id_objeto", objetoId)
       .order("created_at", { ascending: false })
-      .limit(5); // Traemos las últimas 5 para no saturar
+      .limit(5);
 
     if (!error && data) {
       setReseñasAnteriores(data);
@@ -119,7 +112,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
     setSubmitting(true);
     try {
-      // 1. Insertar la reseña
+      // 1. Insertar reseña
       const { error } = await supabase.from("resenia").insert({
         id_usuario: userId,
         id_objeto: objetoSeleccionado.id,
@@ -129,7 +122,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
       if (error) throw error;
 
-      // 2. Dar recompensa (5 tokens)
+      // 2. Dar tokens
       const { data: usuario } = await supabase
         .from("usuarios")
         .select("tokens_disponibles")
@@ -192,11 +185,11 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
             <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 20 }} />
           ) : (
             <>
-              {/* VISTA 1: LISTA DE OBJETOS */}
               {!objetoSeleccionado ? (
+                /* VISTA 1: LISTA DE OBJETOS */
                 <FlatList
                   data={pendientes}
-                  keyExtractor={(item) => item.alquiler_id} // Usamos ID alquiler por si alquiló el mismo objeto 2 veces
+                  keyExtractor={(item) => item.alquiler_id}
                   ListEmptyComponent={
                     <TextComponent text="No tienes alquileres pendientes de reseña." textSize={14} textColor="#666" style={{textAlign:'center', marginTop:20}} />
                   }
@@ -218,7 +211,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
                   )}
                 />
               ) : (
-                /* VISTA 2: FORMULARIO + RESEÑAS ANTERIORES */
+                /* DETALLE Y FORMULARIO */
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <TouchableOpacity 
                     style={styles.backLink} 
@@ -228,36 +221,13 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
                     <TextComponent text="Volver a la lista" textSize={14} textColor="#6366F1" />
                   </TouchableOpacity>
 
-                  {/* Datos del objeto seleccionado */}
+                  {/* Info Objeto */}
                   <View style={styles.infoObjeto}>
                     <Image source={{ uri: objetoSeleccionado.imagen }} style={styles.imgGrande} />
                     <TextComponent text={objetoSeleccionado.nombre} fontWeight="bold" textSize={20} style={{marginTop:10}} />
                   </View>
 
-                  {/* Sección: Reseñas Anteriores */}
-                  <View style={styles.seccionReseñas}>
-                    <TextComponent text="Opiniones anteriores:" fontWeight="600" textSize={14} style={{marginBottom:10}} />
-                    
-                    {loadingReseñas ? (
-                      <ActivityIndicator color="#6366F1" />
-                    ) : reseñasAnteriores.length === 0 ? (
-                      <TextComponent text="Aún no hay opiniones. ¡Sé el primero!" textSize={13} textColor="#999" style={{fontStyle:'italic'}} />
-                    ) : (
-                      reseñasAnteriores.map((res) => (
-                        <View key={res.id} style={styles.cardReseña}>
-                          <View style={{flexDirection:'row', justifyContent:'space-between'}}>
-                            <TextComponent text={res.usuarios?.nombre || "Anónimo"} fontWeight="bold" textSize={13} />
-                            {renderStars(res.calificacion)}
-                          </View>
-                          <TextComponent text={res.comentario} textSize={13} textColor="#444" style={{marginTop:4}} />
-                        </View>
-                      ))
-                    )}
-                  </View>
-
-                  <View style={styles.divider} />
-
-                  {/* Sección: Tu Reseña */}
+                  {/* === TU RESEÑA === */}
                   <TextComponent text="Tu calificación:" fontWeight="bold" style={{marginTop:10}} />
                   <View style={{alignItems:'center', marginVertical:10}}>
                     {renderStars(calificacion, true)}
@@ -283,6 +253,30 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
                       <TextComponent text="Publicar Reseña" textColor="#FFF" fontWeight="bold" />
                     )}
                   </TouchableOpacity>
+
+                  <View style={styles.divider} />
+
+                  {/* === OPINIONES ANTERIORES === */}
+                  <View style={styles.seccionReseñas}>
+                    <TextComponent text="Opiniones anteriores:" fontWeight="600" textSize={14} style={{marginBottom:10}} />
+                    
+                    {loadingReseñas ? (
+                      <ActivityIndicator color="#6366F1" />
+                    ) : reseñasAnteriores.length === 0 ? (
+                      <TextComponent text="Aún no hay opiniones. ¡Sé el primero!" textSize={13} textColor="#999" style={{fontStyle:'italic'}} />
+                    ) : (
+                      reseñasAnteriores.map((res) => (
+                        <View key={res.id} style={styles.cardReseña}>
+                          <View style={{flexDirection:'row', justifyContent:'space-between'}}>
+                            <TextComponent text={res.usuarios?.nombre || "Anónimo"} fontWeight="bold" textSize={13} />
+                            {renderStars(res.calificacion)}
+                          </View>
+                          <TextComponent text={res.comentario} textSize={13} textColor="#444" style={{marginTop:4}} />
+                        </View>
+                      ))
+                    )}
+                  </View>
+
                 </ScrollView>
               )}
             </>
@@ -304,7 +298,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 16,
     padding: 20,
-    height: "85%", // Ocupa bastante pantalla para ver las reseñas
+    height: "85%",
   },
   header: {
     flexDirection: "row",
@@ -351,6 +345,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     padding: 15,
     borderRadius: 10,
+    marginTop: 10, // Se añadio margen superior al bajarlo
     marginBottom: 20,
   },
   cardReseña: {
@@ -362,7 +357,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#eee",
-    marginBottom: 15,
+    marginVertical: 20, // Aumentado el margen para separar secciones
   },
   input: {
     borderWidth: 1,
