@@ -1,4 +1,5 @@
-import ModalResenas from "@/components/modal-resenas"; //reseñas
+import ModalResenas from "@/components/modal-resenas"; 
+import RentalsReturnModal from "@/components/RentalsReturnModal"; 
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -26,6 +27,7 @@ export default function GanarScreen() {
     
     // --- ESTADOS ---
     const [showResenas, setShowResenas] = useState(false);
+    const [showReturnModal, setShowReturnModal] = useState(false);
     const [userId, setUserId] = useState<string | null>(null);
 
     // Cargar usuario al entrar a la pantalla
@@ -42,7 +44,7 @@ export default function GanarScreen() {
         }, [])
     );
 
-    // --- LÓGICA ACTIVADA ---
+    // --- LÓGICA DE ACCIONES ---
     const handleEarnAction = (action: string) => {
         if (!userId) {
             console.log("No hay usuario logueado");
@@ -50,10 +52,11 @@ export default function GanarScreen() {
         }
 
         if (action === "reseñas") {
-            console.log("Abriendo modal de reseñas..."); // Debug
-            setShowResenas(true); // ¡ESTO ABRE EL MODAL!
-        } else {
-             console.log(`Acción seleccionada: ${action} (Aún no implementada)`);
+            setShowResenas(true);
+        } else if (action === "devolver") {
+            setShowReturnModal(true);
+        } else if (action === "misiones") {
+             console.log("Misiones próximamente");
         }
     }
 
@@ -63,13 +66,13 @@ export default function GanarScreen() {
 
     const handleTokensGanados = () => {
         console.log("Tokens ganados y actualizados");
-        // Aquí podrías refrescar el header si tuvieras el saldo ahí
+        // Aquí podrías añadir lógica para recargar el saldo en el header si usas un Context
     }
 
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Header */}
+                {/* === HEADER === */}
                 <View style={styles.header}>
                     <View style={styles.headerIcon}>
                         <Text style={{ fontSize: 24 }}>💰</Text>
@@ -80,14 +83,14 @@ export default function GanarScreen() {
                     </View>
                 </View>
 
-                {/* Sección: Ganar Tokens Gratis */}
+                {/* === SECCIÓN: GANAR GRATIS === */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Ionicons name="gift" size={20} color="#10B981" />
                         <Text style={styles.sectionTitle}>Ganar Gratis</Text>
                     </View>
 
-                    {/* Botón Reseñas (ACTIVO) */}
+                    {/* Opción: Reseñas */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("reseñas")} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#DBEAFE" }]}>
                             <Ionicons name="star" size={32} color="#3B82F6" />
@@ -103,7 +106,7 @@ export default function GanarScreen() {
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
 
-                    {/* Botón Devolver (INACTIVO POR AHORA) */}
+                    {/* Opción: Devolver */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("devolver")} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#D1FAE5" }]}>
                             <Ionicons name="time" size={32} color="#10B981" />
@@ -119,7 +122,7 @@ export default function GanarScreen() {
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
 
-                    {/* Otros botones... */}
+                    {/* Opción: Invitar */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => router.push('../ReferidosScreen' as any)} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#E0E7FF" }]}>
                             <Ionicons name="people" size={32} color="#6366F1" />
@@ -135,6 +138,7 @@ export default function GanarScreen() {
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
 
+                    {/* Opción: Misiones */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("misiones")} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#FEF3C7" }]}>
                             <Ionicons name="checkmark-circle" size={32} color="#F59E0B" />
@@ -149,10 +153,9 @@ export default function GanarScreen() {
                         </View>
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
-
                 </View>
 
-                {/* Sección: Comprar Tokens */}
+                {/* === SECCIÓN: COMPRAR TOKENS === */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Ionicons name="cart" size={20} color="#6366F1" />
@@ -200,7 +203,7 @@ export default function GanarScreen() {
                     </View>
                 </View>
 
-                {/* Info adicional */}
+                {/* === INFO CARD === */}
                 <View style={styles.infoCard}>
                     <Ionicons name="information-circle" size={24} color="#6366F1" />
                     <View style={styles.infoContent}>
@@ -213,25 +216,39 @@ export default function GanarScreen() {
                 </View>
             </ScrollView>
 
-            {/* --- AQUÍ ESTÁ LA MAGIA DEL MODAL --- */}
-            {/* Solo renderizamos el modal si tenemos usuario (para evitar errores) */}
+            {/* === MODALES === */}
             {userId && (
-                <ModalResenas 
-                    visible={showResenas} 
-                    onClose={() => setShowResenas(false)}
-                    userId={userId}
-                    onSuccess={handleTokensGanados}
-                />
+                <>
+                    <ModalResenas 
+                        visible={showResenas} 
+                        onClose={() => setShowResenas(false)}
+                        userId={userId}
+                        onSuccess={handleTokensGanados}
+                    />
+                    
+                    <RentalsReturnModal
+                        visible={showReturnModal}
+                        onClose={() => setShowReturnModal(false)}
+                        userId={userId}
+                        onSuccess={handleTokensGanados}
+                    />
+                </>
             )}
         </SafeAreaView>
     )
 }
 
 const styles = StyleSheet.create({
+    // --- Layout General ---
     container: {
         flex: 1,
         backgroundColor: "#FAFAFA",
     },
+    section: {
+        padding: 16,
+    },
+    
+    // --- Header Principal ---
     header: {
         flexDirection: "row",
         alignItems: "center",
@@ -258,9 +275,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#737373",
     },
-    section: {
-        padding: 16,
-    },
+
+    // --- Títulos de Sección ---
     sectionHeader: {
         flexDirection: "row",
         alignItems: "center",
@@ -277,6 +293,8 @@ const styles = StyleSheet.create({
         color: "#737373",
         marginBottom: 16,
     },
+
+    // --- Tarjetas de "Ganar Gratis" ---
     earnCard: {
         flexDirection: "row",
         alignItems: "center",
@@ -324,6 +342,8 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         color: "#10B981",
     },
+
+    // --- Grid de Paquetes (Tienda) ---
     packagesGrid: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -420,6 +440,8 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         color: "#FFFFFF",
     },
+
+    // --- Tarjeta de Información ---
     infoCard: {
         flexDirection: "row",
         backgroundColor: "#EEF2FF",
