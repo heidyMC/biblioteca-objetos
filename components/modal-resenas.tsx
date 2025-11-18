@@ -55,29 +55,59 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
   const cargarAlquileresPendientes = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("alquileres")
-      .select(`
-        id,
-        objetos (
+    
+    try {
+      // 1. Obtener tus alquileres completados
+      const { data: alquileres, error: errorAlquileres } = await supabase
+        .from("alquileres")
+        .select(`
           id,
-          nombre,
-          imagen_url
-        )
-      `)
-      .eq("usuario_id", userId)
-      .eq("estado", "completado");
+          objetos (
+            id,
+            nombre,
+            imagen_url
+          )
+        `)
+        .eq("usuario_id", userId)
+        .eq("estado", "completado");
 
-    if (!error && data) {
-      const lista = data.map((item: any) => ({
-        id: item.objetos.id,
-        nombre: item.objetos.nombre,
-        imagen: item.objetos.imagen_url,
-        alquiler_id: item.id
-      }));
-      setPendientes(lista);
+      if (errorAlquileres) throw errorAlquileres;
+
+      // 2. Obtener los IDs de objetos que YA has reseñado
+      const { data: misReseñas, error: errorReseñas } = await supabase
+        .from("resenia")
+        .select("id_objeto")
+        .eq("id_usuario", userId);
+
+      if (errorReseñas) throw errorReseñas;
+
+      // Creamos un Set (conjunto) con los IDs reseñados para buscar rápido
+      const idsReseñados = new Set(misReseñas?.map(r => r.id_objeto));
+
+      if (alquileres) {
+        // 3. FILTRO MÁGICO:
+        // Solo dejamos pasar los alquileres cuyo objeto NO esté en la lista de reseñados
+        const filtrados = alquileres.filter((item: any) => !idsReseñados.has(item.objetos.id));
+
+        // Formateamos la lista
+        const listaFormateada = filtrados.map((item: any) => ({
+          id: item.objetos.id,      // ID del objeto
+          nombre: item.objetos.nombre,
+          imagen: item.objetos.imagen_url,
+          alquiler_id: item.id
+        }));
+
+        // 4. Eliminar duplicados visuales 
+        // (Si alquilaste 3 veces el mismo taladro y no lo has reseñado, que solo salga 1 vez en la lista)
+        const unicos = Array.from(new Map(listaFormateada.map(item => [item.id, item])).values());
+
+        setPendientes(unicos);
+      }
+    } catch (error) {
+      console.error("Error cargando pendientes:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const cargarReseñasDelObjeto = async (objetoId: string) => {
@@ -112,7 +142,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
     setSubmitting(true);
     try {
-      // 1. Insertar reseña
+      // 1. Insertar la reseña
       const { error } = await supabase.from("resenia").insert({
         id_usuario: userId,
         id_objeto: objetoSeleccionado.id,
@@ -122,7 +152,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
       if (error) throw error;
 
-      // 2. Dar tokens
+      // 2. Dar recompensa (5 tokens)
       const { data: usuario } = await supabase
         .from("usuarios")
         .select("tokens_disponibles")
@@ -137,8 +167,16 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
         .eq("id", userId);
 
       Alert.alert("¡Gracias!", "Tu reseña ha sido publicada. Ganaste 5 tokens 💰");
-      onSuccess();
-      onClose();
+      
+      // Refrescar la lista (para que el objeto desaparezca inmediatamente)
+      await cargarAlquileresPendientes();
+      
+      onSuccess(); // Actualizar tokens en pantalla anterior
+      
+      // Regresar a la lista (si quedan objetos) o cerrar si se vació
+      setObjetoSeleccionado(null);
+      setCalificacion(0);
+      setComentario("");
 
     } catch (error: any) {
       Alert.alert("Error", error.message);
@@ -185,13 +223,16 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
             <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 20 }} />
           ) : (
             <>
+              {/* VISTA 1: LISTA DE OBJETOS */}
               {!objetoSeleccionado ? (
-                /* VISTA 1: LISTA DE OBJETOS */
                 <FlatList
                   data={pendientes}
-                  keyExtractor={(item) => item.alquiler_id}
+                  keyExtractor={(item) => item.id} 
                   ListEmptyComponent={
-                    <TextComponent text="No tienes alquileres pendientes de reseña." textSize={14} textColor="#666" style={{textAlign:'center', marginTop:20}} />
+                    <View style={{alignItems:'center', marginTop:40}}>
+                        <Ionicons name="checkmark-circle-outline" size={50} color="#10B981" />
+                        <TextComponent text="¡Todo al día! No tienes reseñas pendientes." textSize={14} textColor="#666" style={{textAlign:'center', marginTop:10}} />
+                    </View>
                   }
                   renderItem={({ item }) => (
                     <TouchableOpacity
@@ -211,7 +252,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
                   )}
                 />
               ) : (
-                /* DETALLE Y FORMULARIO */
+                /* VISTA 2: DETALLE Y FORMULARIO */
                 <ScrollView showsVerticalScrollIndicator={false}>
                   <TouchableOpacity 
                     style={styles.backLink} 
@@ -227,7 +268,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
                     <TextComponent text={objetoSeleccionado.nombre} fontWeight="bold" textSize={20} style={{marginTop:10}} />
                   </View>
 
-                  {/* === TU RESEÑA === */}
+                  {/* === SECCIÓN 1: TU RESEÑA (FORMULARIO) === */}
                   <TextComponent text="Tu calificación:" fontWeight="bold" style={{marginTop:10}} />
                   <View style={{alignItems:'center', marginVertical:10}}>
                     {renderStars(calificacion, true)}
@@ -256,7 +297,7 @@ export default function ModalResenas({ visible, onClose, userId, onSuccess }: Pr
 
                   <View style={styles.divider} />
 
-                  {/* === OPINIONES ANTERIORES === */}
+                  {/* === SECCIÓN 2: OPINIONES ANTERIORES === */}
                   <View style={styles.seccionReseñas}>
                     <TextComponent text="Opiniones anteriores:" fontWeight="600" textSize={14} style={{marginBottom:10}} />
                     
@@ -298,7 +339,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 16,
     padding: 20,
-    height: "85%",
+    height: "85%", 
   },
   header: {
     flexDirection: "row",
@@ -345,7 +386,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     padding: 15,
     borderRadius: 10,
-    marginTop: 10, // Se añadio margen superior al bajarlo
+    marginTop: 10, 
     marginBottom: 20,
   },
   cardReseña: {
@@ -357,7 +398,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#eee",
-    marginVertical: 20, // Aumentado el margen para separar secciones
+    marginVertical: 20, 
   },
   input: {
     borderWidth: 1,
