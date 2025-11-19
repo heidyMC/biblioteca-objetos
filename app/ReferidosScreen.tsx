@@ -82,6 +82,45 @@ export default function ReferidosScreen() {
       setGeneratingCode(false);
     }
   };
+    const loadReferidos = async (userId: string) => {
+    try {
+      // Obtener IDs de la tabla referidos
+      const { data: referidosData, error } = await supabase
+        .from("referidos")
+        .select("id_referido")
+        .eq("id_referente", userId);
+
+      if (error) throw error;
+
+      if (!referidosData || referidosData.length === 0) {
+        setReferidos([]);
+        return;
+      }
+
+      const referidosIds = referidosData.map((ref) => ref.id_referido);
+
+      // Obtener usuarios referidos
+      const { data: usuariosData, error: usuariosError } = await supabase
+        .from("usuarios")
+        .select("id, nombre, created_at")
+        .in("id", referidosIds);
+
+      if (usuariosError) throw usuariosError;
+
+      const referidos: Referido[] = usuariosData.map((usuario) => ({
+        id: usuario.id,
+        nombre: usuario.nombre,
+        fecha_registro: new Date(usuario.created_at).toLocaleDateString("es-ES"),
+        tokens_ganados: 25, // Valor fijo por referido
+      }));
+
+      setReferidos(referidos);
+    } catch (error) {
+      console.error("Error cargando referidos:", error);
+      setReferidos([]);
+    }
+  };
+
 
 
 // Los estilos se quedan completos porque se usan desde el SkeletonLoader
