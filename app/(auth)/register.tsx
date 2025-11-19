@@ -1,7 +1,8 @@
 "use client";
 
 import { Ionicons } from "@expo/vector-icons";
-
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -44,7 +45,12 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
 
-    
+    try {
+      const { data: existingUser } = await supabase
+        .from("usuarios")
+        .select("id")
+        .eq("correo", email)
+        .single();
 
       if (existingUser) {
         Alert.alert("Error", "Este correo electrónico ya está registrado.");
@@ -52,6 +58,13 @@ export default function RegisterScreen() {
         return;
       }
 
+      let referrerId = null;
+      if (referralCode.trim()) {
+        const { data: referrerData } = await supabase
+          .from("usuarios")
+          .select("id, tokens_disponibles")
+          .eq("referal_code", referralCode.trim().toUpperCase())
+          .single();
 
         if (!referrerData) {
           Alert.alert("Código de referido inválido", "El código de referido no existe. Puedes dejarlo vacío si no tienes uno.");
