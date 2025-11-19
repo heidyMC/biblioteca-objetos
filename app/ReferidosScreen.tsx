@@ -124,57 +124,40 @@ export default function ReferidosScreen() {
 
 
 // Los estilos se quedan completos porque se usan desde el SkeletonLoader
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FAFAFA",
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#737373",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
-    padding: 16,
-  },
-  headerTexts: {
-    flex: 1,
-  },
-  backButton: {
-    padding: 4,
-  },
- 
-  referralItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  referralInfo: {
-    flex: 1,
-  },
-  skeleton: {
-    backgroundColor: "#E5E7EB",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-});
+{!hasReferidos ? (
+  <View style={styles.emptyState}>
+    <Ionicons name="people-outline" size={64} color="#D4D4D4" />
+    <Text style={styles.emptyStateText}>Aún no tienes referidos</Text>
+    <Text style={styles.emptyStateSubtext}>
+      Comparte tu enlace para empezar a ganar tokens.
+    </Text>
+  </View>
+) : !hasSearchResults ? (
+  <View style={styles.emptyState}>
+    <Ionicons name="search-outline" size={64} color="#D4D4D4" />
+    <Text style={styles.emptyStateText}>No se encontraron referidos</Text>
+
+    <TouchableOpacity onPress={clearSearch} style={styles.clearSearchButton}>
+      <Text style={styles.clearSearchButtonText}>Limpiar búsqueda</Text>
+    </TouchableOpacity>
+  </View>
+) : (
+  <View style={styles.referralsList}>
+    {filteredReferidos.map((ref) => (
+      <View key={ref.id} style={styles.referralItem}>
+        <View style={styles.referralAvatar}>
+          <Ionicons name="person" size={24} color="#6366F1" />
+        </View>
+        <View style={styles.referralInfo}>
+          <Text style={styles.referralName}>{ref.nombre}</Text>
+          <Text style={styles.referralDate}>
+            Registrado el {ref.fecha_registro}
+          </Text>
+        </View>
+        <View style={styles.referralReward}>
+          <Text style={styles.referralRewardText}>+25 tokens</Text>
+        </View>
+      </View>
+    ))}
+  </View>
+)}
