@@ -1,6 +1,7 @@
 "use client";
 
 import { Ionicons } from "@expo/vector-icons";
+
 import {
   Alert,
   KeyboardAvoidingView,
@@ -45,7 +46,18 @@ export default function RegisterScreen() {
 
     
 
-      
+      if (existingUser) {
+        Alert.alert("Error", "Este correo electrónico ya está registrado.");
+        setIsLoading(false);
+        return;
+      }
+
+
+        if (!referrerData) {
+          Alert.alert("Código de referido inválido", "El código de referido no existe. Puedes dejarlo vacío si no tienes uno.");
+          setIsLoading(false);
+          return;
+        }
         referrerId = referrerData.id;
       }
 
