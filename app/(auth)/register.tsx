@@ -1,8 +1,6 @@
-"use client"
+"use client";
 
-import { Ionicons } from "@expo/vector-icons"
-import { useRouter } from "expo-router"
-import { useState } from "react"
+import { Ionicons } from "@expo/vector-icons";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,116 +11,159 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { supabase } from "../../lib/supabase"; // Ajusta la ruta según tu estructura
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { supabase } from "../../lib/supabase";
 
 export default function RegisterScreen() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  // ✅ Registro con email y contraseña
   const handleRegister = async () => {
     if (!name || !email || !phone || !password || !confirmPassword) {
-      Alert.alert("Campos incompletos", "Por favor completa todos los campos.")
-      return
+      Alert.alert("Campos incompletos", "Por favor completa todos los campos obligatorios.");
+      return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Las contraseñas no coinciden.")
-      return
+      Alert.alert("Error", "Las contraseñas no coinciden.");
+      return;
     }
 
     if (password.length < 6) {
-      Alert.alert("Contraseña débil", "Debe tener al menos 6 caracteres.")
-      return
+      Alert.alert("Contraseña débil", "La contraseña debe tener al menos 6 caracteres.");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
-    try {
-      // Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      })
+    
 
-      if (authError) throw authError
-
-      const userId = authData.user?.id
-      if (!userId) {
-        Alert.alert("Error", "No se pudo obtener el ID del usuario.")
-        return
+      
+        referrerId = referrerData.id;
       }
 
-      // Insertar datos adicionales en la tabla usuarios
-      const { error: insertError } = await supabase.from("usuarios").insert([
-        {
-          id: userId,
-          nombre: name,
-          telefono: phone,
-          correo: email,
-          contrasenia: password,
-          tokens_disponibles: 150,
-        },
-      ])
+      const { data: newUser, error: insertError } = await supabase
+        .from("usuarios")
+        .insert([
+          {
+            nombre: name,
+            telefono: phone,
+            correo: email,
+            contrasenia: password,
+            tokens_disponibles: 150,
+          },
+        ])
+        .select()
+        .single();
 
-      if (insertError) throw insertError
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+
+      if (referrerId) {
+        const { error: referralError } = await supabase
+          .from("referidos")
+          .insert([
+            {
+              id_referente: referrerId,
+              id_referido: newUser.id,
+            },
+          ]);
+
+        if (referralError) {
+          console.error("Error creando relación de referido:", referralError);
+        }
+
+        const { data: referrerCurrent } = await supabase
+          .from("usuarios")
+          .select("tokens_disponibles")
+          .eq("id", referrerId)
+          .single();
+
+        if (referrerCurrent) {
+          await supabase
+            .from("usuarios")
+            .update({
+              tokens_disponibles: referrerCurrent.tokens_disponibles + 25,
+            })
+            .eq("id", referrerId);
+        }
+
+        await supabase
+          .from("usuarios")
+          .update({
+            tokens_disponibles: 160,
+          })
+          .eq("id", newUser.id);
+      }
 
       Alert.alert(
         "¡Cuenta creada!",
-        "Tu cuenta ha sido creada correctamente. Has recibido 150 tokens de bienvenida.",
-        [{ text: "OK", onPress: () => router.replace("/(tabs)/HomeMenu/mainScreen") }]
-      )
+        referrerId
+          ? "Tu cuenta ha sido creada correctamente. Has recibido 160 tokens de bienvenida (150 + 10 extra por código de referido)."
+          : "Tu cuenta ha sido creada correctamente. Has recibido 150 tokens de bienvenida.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              router.replace("/(tabs)/HomeMenu/mainScreen");
+            },
+          },
+        ]
+      );
 
-      // Limpiar campos
-      setName("")
-      setEmail("")
-      setPhone("")
-      setPassword("")
-      setConfirmPassword("")
+      setName("");
+      setEmail("");
+      setPhone("");
+      setPassword("");
+      setConfirmPassword("");
+      setReferralCode("");
     } catch (error: any) {
-      Alert.alert("Error al registrar", error.message)
+      Alert.alert("Error al registrar", error.message || "Ocurrió un error inesperado. Por favor intenta nuevamente.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  // ✅ Registro/Iniciar sesión con Google
   const handleGoogleRegister = async () => {
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "exp://localhost:19000", // ⚠️ Cambia esto al URI de redirección real de tu app Expo
+          redirectTo: "exp://localhost:19000",
         },
-      })
+      });
 
-      if (error) throw error
+      if (error) throw error;
 
-      // Supabase abrirá el flujo de Google y manejará el login automáticamente
-      // Luego de login exitoso, puedes redirigir
-      Alert.alert("¡Bienvenido!", "Has iniciado sesión con Google correctamente.")
-      router.replace("/(tabs)/HomeMenu/mainScreen")
+      Alert.alert("¡Bienvenido!", "Has iniciado sesión con Google correctamente.");
+      router.replace("/(tabs)/HomeMenu/mainScreen");
     } catch (error: any) {
-      Alert.alert("Error con Google", error.message)
+      Alert.alert("Error con Google", error.message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* Header */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Ionicons name="cube" size={40} color="#FFFFFF" />
@@ -131,15 +172,13 @@ export default function RegisterScreen() {
             <Text style={styles.subtitle}>Alquila con tokens</Text>
           </View>
 
-          {/* Card principal */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Crear Cuenta</Text>
             <Text style={styles.cardDescription}>Regístrate para comenzar a alquilar</Text>
 
-            {/* Formulario */}
             <View style={styles.form}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre completo</Text>
+                <Text style={styles.label}>Nombre completo *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Tu nombre"
@@ -151,7 +190,7 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Correo electrónico</Text>
+                <Text style={styles.label}>Correo electrónico *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="tu@email.com"
@@ -164,7 +203,7 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Teléfono</Text>
+                <Text style={styles.label}>Teléfono *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Ej. 77777777"
@@ -176,7 +215,7 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Contraseña</Text>
+                <Text style={styles.label}>Contraseña *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
@@ -188,7 +227,7 @@ export default function RegisterScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirmar contraseña</Text>
+                <Text style={styles.label}>Confirmar contraseña *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="••••••••"
@@ -199,7 +238,23 @@ export default function RegisterScreen() {
                 />
               </View>
 
-              {/* Botón principal */}
+              <View style={styles.inputGroup}>
+                <View style={styles.referralLabelContainer}>
+                  <Text style={styles.label}>Código de referido</Text>
+                  <Text style={styles.optionalText}>(Opcional)</Text>
+                </View>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Código de 6 dígitos (ej: ABC123)"
+                  value={referralCode}
+                  onChangeText={setReferralCode}
+                  autoCapitalize="characters"
+                  editable={!isLoading}
+                  maxLength={6}
+                />
+                <Text style={styles.referralDescription}>Si usas un código de referido, recibirás 10 tokens adicionales</Text>
+              </View>
+
               <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleRegister}
@@ -208,14 +263,12 @@ export default function RegisterScreen() {
                 <Text style={styles.buttonText}>{isLoading ? "Creando cuenta..." : "Crear Cuenta"}</Text>
               </TouchableOpacity>
 
-              {/* Separador */}
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>O continúa con</Text>
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Botón Google */}
               <TouchableOpacity
                 style={[styles.googleButton, isLoading && styles.buttonDisabled]}
                 onPress={handleGoogleRegister}
@@ -225,7 +278,10 @@ export default function RegisterScreen() {
                 <Text style={styles.googleButtonText}>Continuar con Google</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.linkContainer} onPress={() => router.push("/(auth)/login")}>
+              <TouchableOpacity
+                style={styles.linkContainer}
+                onPress={() => router.push("/(auth)/login")}
+              >
                 <Text style={styles.linkText}>
                   ¿Ya tienes una cuenta? <Text style={styles.linkTextBold}>Inicia sesión aquí</Text>
                 </Text>
@@ -233,17 +289,17 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          {/* Footer */}
           <View style={styles.footer}>
             <Ionicons name="gift" size={20} color="#F59E0B" />
             <Text style={styles.footerText}>
               Recibe <Text style={styles.footerTextBold}>150 tokens gratis</Text> al registrarte
+              {referralCode && " + 10 tokens adicionales por código de referido"}
             </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -297,11 +353,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 8,
-  },
+  divider: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
   dividerLine: { flex: 1, height: 1, backgroundColor: "#E5E5E5" },
   dividerText: { marginHorizontal: 16, fontSize: 14, color: "#737373" },
   googleButton: {
@@ -329,6 +381,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
   },
-  footerText: { fontSize: 14, color: "#737373" },
+  footerText: { fontSize: 14, color: "#737373", textAlign: "center" },
   footerTextBold: { fontWeight: "700", color: "#F59E0B" },
-})
+  referralLabelContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
+  optionalText: { fontSize: 12, color: "#737373", fontStyle: "italic" },
+  referralDescription: { fontSize: 12, color: "#737373", fontStyle: "italic" },
+});
