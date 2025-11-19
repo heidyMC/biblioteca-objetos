@@ -225,7 +225,7 @@ export default function ReferidosScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/ganar")} style={styles.backButton}>
               <Ionicons name="arrow-back" size={24} color="#0A0A0A" />
             </TouchableOpacity>
             <View>
