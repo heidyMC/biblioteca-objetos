@@ -25,64 +25,64 @@ type Referido = {
   tokens_ganados: number;
 };
 
-// Componente Skeleton para loading
-const SkeletonLoader = () => (
-  <SafeAreaView style={styles.container} edges={["top"]}>
-    <ScrollView showsVerticalScrollIndicator={false}>
-      {/* Header Skeleton */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <View style={[styles.skeleton, { width: 24, height: 24, borderRadius: 12 }]} />
-        </TouchableOpacity>
-        <View style={styles.headerTexts}>
-          <View style={[styles.skeleton, { width: 200, height: 28, borderRadius: 8 }]} />
-          <View style={[styles.skeleton, { width: 180, height: 16, borderRadius: 6, marginTop: 4 }]} />
-        </View>
-      </View>
+export default function ReferidosScreen() {
+  const [user, setUser] = useState<any>(null);
+  const [referidos, setReferidos] = useState<Referido[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const router = useRouter();
 
-      {/* Tarjeta de compartir Skeleton */}
-      <View style={styles.shareCard}>
-        <View style={styles.shareHeader}>
-          <View style={[styles.skeleton, { width: 32, height: 32, borderRadius: 16 }]} />
-          <View style={styles.shareTexts}>
-            <View style={[styles.skeleton, { width: '80%', height: 20, borderRadius: 6 }]} />
-            <View style={[styles.skeleton, { width: '95%', height: 16, borderRadius: 4, marginTop: 8 }]} />
-          </View>
-        </View>
+  useEffect(() => {
+    loadUserAndReferrals();
+  }, []);
 
-        <View style={styles.referralLinkBox}>
-          <View style={[styles.skeleton, { width: 150, height: 16, borderRadius: 6 }]} />
-          <View style={[styles.skeleton, { width: 120, height: 28, borderRadius: 8, marginTop: 8 }]} />
-        </View>
+  const loadUserAndReferrals = async () => {
+    setLoading(true);
+    try {
+      const userData = await AsyncStorage.getItem("usuario");
 
-        <View style={[styles.skeleton, { height: 48, borderRadius: 12 }]} />
-      </View>
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
 
-      {/* Lista de referidos Skeleton */}
-      <View style={styles.referralsSection}>
-        <View style={styles.sectionHeader}>
-          <View style={[styles.skeleton, { width: 20, height: 20, borderRadius: 10 }]} />
-          <View style={[styles.skeleton, { width: 120, height: 20, borderRadius: 6 }]} />
-        </View>
+        // Si el usuario NO tiene código → generarlo
+        if (!parsedUser.referal_code) {
+          await generateReferralCode(parsedUser);
+        }
+      }
+    } catch (error) {
+      console.error("Error cargando usuario y referidos:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        <View style={[styles.skeleton, { height: 48, borderRadius: 12 }]} />
+  const generateReferralCode = async (user: any) => {
+    setGeneratingCode(true);
+    try {
+      // Código de 6 caracteres en mayúsculas
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
-        {[1, 2, 3].map((item) => (
-          <View key={item} style={styles.referralItem}>
-            <View style={[styles.skeleton, { width: 48, height: 48, borderRadius: 24 }]} />
-            <View style={styles.referralInfo}>
-              <View style={[styles.skeleton, { width: '70%', height: 18, borderRadius: 6 }]} />
-              <View style={[styles.skeleton, { width: '50%', height: 14, borderRadius: 4, marginTop: 6 }]} />
-            </View>
-            <View style={[styles.skeleton, { width: 80, height: 32, borderRadius: 12 }]} />
-          </View>
-        ))}
-      </View>
-    </ScrollView>
-  </SafeAreaView>
-);
+      const { error } = await supabase
+        .from("usuarios")
+        .update({ referal_code: code })
+        .eq("id", user.id);
 
-// ⬆️ HASTA AQUÍ TERMINA EL COMMIT 1
+      if (error) throw error;
+
+      // Actualizar localmente
+      const updatedUser = { ...user, referal_code: code };
+      setUser(updatedUser);
+      await AsyncStorage.setItem("usuario", JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error("Error generando código de referido:", error);
+      Alert.alert("Error", "No se pudo generar el código de referido");
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
 
 // Los estilos se quedan completos porque se usan desde el SkeletonLoader
 const styles = StyleSheet.create({
@@ -121,8 +121,7 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
-  // ... (mantén TODOS los estilos que ya tenías,
-  //      no borres nada porque los siguientes commits los usarán)
+ 
   referralItem: {
     flexDirection: "row",
     alignItems: "center",
