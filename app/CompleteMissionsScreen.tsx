@@ -184,3 +184,39 @@ const Confetti = () => {
     </View>
   );
 };
+const CompleteMissionsScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
+
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    loadUserAndMissions();
+  }, []);
+
+  const loadUserAndMissions = async () => {
+    setLoading(true);
+    try {
+      const userData = await AsyncStorage.getItem("usuario");
+
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+        await loadUserMissions(parsedUser.id);
+      } else {
+        setMissions(getDefaultMissions());
+      }
+    } catch (error) {
+      console.error("Error cargando usuario:", error);
+      setMissions(getDefaultMissions());
+    } finally {
+      setLoading(false);
+    }
+  };
