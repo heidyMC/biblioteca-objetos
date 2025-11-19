@@ -184,39 +184,63 @@ const Confetti = () => {
     </View>
   );
 };
-const CompleteMissionsScreen = () => {
-  const navigation = useNavigation<NavigationProp>();
-
-  const [missions, setMissions] = useState<Mission[]>([]);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
-  const [isClaiming, setIsClaiming] = useState(false);
-
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    loadUserAndMissions();
-  }, []);
-
-  const loadUserAndMissions = async () => {
-    setLoading(true);
+  const loadUserMissions = async (userId: string) => {
     try {
-      const userData = await AsyncStorage.getItem("usuario");
+      // Obtener estado de misiones guardadas
+      const { data: userMissions, error: missionsError } = await supabase
+        .from("misiones")
+        .select("*")
+        .eq("usuario_id", userId);
 
-      if (userData) {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        await loadUserMissions(parsedUser.id);
-      } else {
+      if (missionsError) {
+        console.error("Error cargando misiones del usuario:", missionsError);
         setMissions(getDefaultMissions());
+        return;
       }
-    } catch (error) {
-      console.error("Error cargando usuario:", error);
-      setMissions(getDefaultMissions());
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      // Mapa de estados usando mision_name
+      const missionStatusMap = new Map();
+      userMissions?.forEach((mission) =>
+        missionStatusMap.set(mission.mision_name, mission.estado)
+      );
+
+      // Verificar primera reseña
+      const { data: reviews, error: reviewsError } = await supabase
+        .from("resenia")
+        .select("id")
+        .eq("id_usuario", userId)
+        .limit(1);
+
+      if (reviewsError) {
+        console.error("Error consultando reseñas:", reviewsError);
+      }
+
+      // Verificar primer alquiler
+      const { data: rentals, error: rentalsError } = await supabase
+        .from("alquileres")
+        .select("id")
+        .eq("usuario_id", userId)
+        .limit(1);
+
+      if (rentalsError) {
+        console.error("Error consultando alquileres:", rentalsError);
+      }
+
+      const missionsToProcess = [
+        {
+          name: MISSION_NAMES.FIRST_REVIEW,
+          type: "review" as const,
+          completed: reviews && reviews.length > 0,
+        },
+        {
+          name: MISSION_NAMES.FIRST_RENTAL,
+          type: "rental" as const,
+          completed: rentals && rentals.length > 0,
+        },
+      ];
+
+      // Insertar misiones completadas si no existen en DB
+      for (const mission of missionsToProcess) {
+        const currentStatus = missionStatusMap.get(mission.name);
+
+        // Si com
