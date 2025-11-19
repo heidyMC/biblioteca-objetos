@@ -240,5 +240,95 @@ export const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
   },
-  
+  // Skeleton Styles
+  skeletonMissionCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  skeletonMissionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  skeletonIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#e0e0e0",
+    marginRight: 12,
+  },
+  skeletonMissionInfo: {
+    flex: 1,
+  },
+  skeletonTitle: {
+    height: 18,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    marginBottom: 8,
+    width: "70%",
+  },
+  skeletonDescription: {
+    height: 14,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    width: "90%",
+  },
+  skeletonRewardContainer: {
+    alignItems: "center",
+  },
+  skeletonRewardText: {
+    height: 18,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    width: 40,
+    marginBottom: 4,
+  },
+  skeletonRewardLabel: {
+    height: 12,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    width: 30,
+  },
+  skeletonMissionFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  skeletonBadge: {
+    height: 24,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 16,
+    width: 80,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: "#007bff",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
 });
