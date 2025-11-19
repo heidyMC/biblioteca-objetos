@@ -1,6 +1,7 @@
-import { Ionicons } from "@expo/vector-icons"
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type TokenPackage = {
     id: string
@@ -18,6 +19,7 @@ const tokenPackages: TokenPackage[] = [
 ]
 
 export default function GanarScreen() {
+    const router = useRouter();
     const handleEarnAction = (action: string) => {
         // TODO: Implementar lógica para cada acción
         console.log(`Acción seleccionada: ${action}`)
@@ -80,7 +82,8 @@ export default function GanarScreen() {
                     </TouchableOpacity>
 
                     {/* Invitar Amigos */}
-                    <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("invitar")} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.earnCard} onPress={() => router.push('../ReferidosScreen' as any)}
+activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#E0E7FF" }]}>
                             <Ionicons name="people" size={32} color="#6366F1" />
                         </View>
@@ -95,7 +98,7 @@ export default function GanarScreen() {
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("misiones")} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.earnCard} onPress={() => router.push('../CompleteMissionsScreen' as any)} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#FEF3C7" }]}>
                             <Ionicons name="checkmark-circle" size={32} color="#F59E0B" />
                         </View>
