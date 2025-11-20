@@ -1,5 +1,9 @@
+import ModalResenas from "@/components/modal-resenas";
+import RentalsReturnModal from "@/components/RentalsReturnModal";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -20,14 +24,49 @@ const tokenPackages: TokenPackage[] = [
 
 export default function GanarScreen() {
     const router = useRouter();
+    
+    // --- ESTADOS DEL PRIMER CÓDIGO ---
+    const [showResenas, setShowResenas] = useState(false);
+    const [showReturnModal, setShowReturnModal] = useState(false);
+    const [userId, setUserId] = useState<string | null>(null);
+
+    // Cargar usuario al entrar a la pantalla (del primer código)
+    useFocusEffect(
+        useCallback(() => {
+            const getUser = async () => {
+                const userData = await AsyncStorage.getItem("usuario");
+                if (userData) {
+                    const parsed = JSON.parse(userData);
+                    setUserId(parsed.id);
+                }
+            };
+            getUser();
+        }, [])
+    );
+
+    // --- LÓGICA MEJORADA COMBINADA ---
     const handleEarnAction = (action: string) => {
-        // TODO: Implementar lógica para cada acción
-        console.log(`Acción seleccionada: ${action}`)
+        if (!userId) {
+            console.log("No hay usuario logueado");
+            return; 
+        }
+
+        if (action === "reseñas") {
+            setShowResenas(true);
+        } else if (action === "devolver") {
+            setShowReturnModal(true);
+        } else if (action === "misiones") {
+            console.log("Misiones próximamente");
+        }
     }
 
     const handlePurchase = (packageId: string) => {
-        // TODO: Implementar lógica de compra
         console.log(`Comprar paquete: ${packageId}`)
+    }
+
+    const handleTokensGanados = () => {
+        console.log("Tokens ganados y actualizados");
+        // Aquí podrías añadir lógica para recargar el saldo en el header si usas un Context
     }
 
     return (
@@ -51,6 +90,7 @@ export default function GanarScreen() {
                         <Text style={styles.sectionTitle}>Ganar Gratis</Text>
                     </View>
 
+                    {/* Opción: Reseñas - Con modal del primer código */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("reseñas")} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#DBEAFE" }]}>
                             <Ionicons name="star" size={32} color="#3B82F6" />
@@ -66,6 +106,7 @@ export default function GanarScreen() {
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
 
+                    {/* Opción: Devolver - Con modal del primer código */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => handleEarnAction("devolver")} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#D1FAE5" }]}>
                             <Ionicons name="time" size={32} color="#10B981" />
@@ -82,8 +123,7 @@ export default function GanarScreen() {
                     </TouchableOpacity>
 
                     {/* Invitar Amigos */}
-                    <TouchableOpacity style={styles.earnCard} onPress={() => router.push('../ReferidosScreen' as any)}
-activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.earnCard} onPress={() => router.push('../ReferidosScreen' as any)} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#E0E7FF" }]}>
                             <Ionicons name="people" size={32} color="#6366F1" />
                         </View>
@@ -98,6 +138,7 @@ activeOpacity={0.7}>
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
 
+                    {/* Misiones - Con navegación del segundo código */}
                     <TouchableOpacity style={styles.earnCard} onPress={() => router.push('../CompleteMissionsScreen' as any)} activeOpacity={0.7}>
                         <View style={[styles.earnIconContainer, { backgroundColor: "#FEF3C7" }]}>
                             <Ionicons name="checkmark-circle" size={32} color="#F59E0B" />
@@ -112,7 +153,6 @@ activeOpacity={0.7}>
                         </View>
                         <Ionicons name="chevron-forward" size={24} color="#D4D4D4" />
                     </TouchableOpacity>
-
                 </View>
 
                 {/* Sección: Comprar Tokens */}
@@ -175,10 +215,30 @@ activeOpacity={0.7}>
                     </View>
                 </View>
             </ScrollView>
+
+            {/* === MODALES DEL PRIMER CÓDIGO === */}
+            {userId && (
+                <>
+                    <ModalResenas 
+                        visible={showResenas} 
+                        onClose={() => setShowResenas(false)}
+                        userId={userId}
+                        onSuccess={handleTokensGanados}
+                    />
+                    
+                    <RentalsReturnModal
+                        visible={showReturnModal}
+                        onClose={() => setShowReturnModal(false)}
+                        userId={userId}
+                        onSuccess={handleTokensGanados}
+                    />
+                </>
+            )}
         </SafeAreaView>
     )
 }
 
+// Los estilos se mantienen igual que en el segundo código
 const styles = StyleSheet.create({
     container: {
         flex: 1,
