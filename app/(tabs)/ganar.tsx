@@ -59,10 +59,20 @@ export default function GanarScreen() {
             console.log("Misiones próximamente");
         }
     }
+// --- NUEVA COMPRA INTEGRADA SIN PERDER LA ORIGINAL ---
+   const handlePurchase = (pkg: TokenPackage) => {
+        // Redirigir a la pantalla de compra con los datos del paquete
+        router.push({
+            pathname: "../CompraTokensScreen",
+            params: {
+                packageId: pkg.id,
+                tokens: pkg.tokens.toString(),
+                price: pkg.price.toString(),
+                bonus: pkg.bonus?.toString() || "0"
+            }
+        } as any);
+    };
 
-    const handlePurchase = (packageId: string) => {
-        console.log(`Comprar paquete: ${packageId}`)
-    }
 
     const handleTokensGanados = () => {
         console.log("Tokens ganados y actualizados");
@@ -168,7 +178,7 @@ export default function GanarScreen() {
                             <TouchableOpacity
                                 key={pkg.id}
                                 style={[styles.packageCard, pkg.popular && styles.popularPackage]}
-                                onPress={() => handlePurchase(pkg.id)}
+                                onPress={() => handlePurchase(pkg)}
                                 activeOpacity={0.8}
                             >
                                 {pkg.popular && (

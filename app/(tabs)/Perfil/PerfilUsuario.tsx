@@ -8,6 +8,7 @@ import { useCallback, useState } from "react"
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
 
 interface Usuario {
+  is_admin: any
   id: string
   nombre: string
   tokens_disponibles: number
@@ -75,6 +76,13 @@ const Perfil = () => {
 
   const handleHistorialCompra = () => {
     console.log("Historial de compra")
+  }
+const handleHistorialCompras = () => {
+    router.push("/HistorialComprasScreen")
+  }
+
+  const handleAdminTransacciones = () => {
+    router.push("/AdminTransaccionesScreen")
   }
 
   const handleRanking = () => {
@@ -208,6 +216,30 @@ const Perfil = () => {
           </View>
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
+
+         <TouchableOpacity style={styles.actionCard} onPress={handleHistorialCompras}>
+          <View style={styles.actionIconContainer}>
+            <Ionicons name="card-outline" size={24} color="#6366F1" />
+          </View>
+          <View style={styles.actionContent}>
+            <Text style={styles.actionTitle}>Historial de Compras</Text>
+            <Text style={styles.actionSubtitle}>Ver todas tus compras de tokens</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+        </TouchableOpacity>
+
+        {usuario.is_admin && (
+          <TouchableOpacity style={styles.actionCard} onPress={handleAdminTransacciones}>
+            <View style={styles.actionIconContainer}>
+              <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionTitle}>Administrar Transacciones</Text>
+              <Text style={styles.actionSubtitle}>Gestionar todas las transacciones</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.actionCard} onPress={handleRanking}>
           <View style={styles.actionIconContainer}>
