@@ -59,8 +59,8 @@ export default function GanarScreen() {
             console.log("Misiones próximamente");
         }
     }
-// --- NUEVA COMPRA INTEGRADA SIN PERDER LA ORIGINAL ---
-   const handlePurchase = (pkg: TokenPackage) => {
+
+    const handlePurchase = (pkg: TokenPackage) => {
         // Redirigir a la pantalla de compra con los datos del paquete
         router.push({
             pathname: "../CompraTokensScreen",
