@@ -31,7 +31,7 @@ const Perfil = () => {
           if (data) {
             const usuarioLocal = JSON.parse(data)
 
-            // Obtener datos actualizados desde Supabase para asegurar sincronización
+            // Obtener datos actualizados desde Supabase
             const { data: usuarioDb, error } = await supabase
               .from("usuarios")
               .select("*")
@@ -60,13 +60,11 @@ const Perfil = () => {
     }, []),
   )
 
-  // --- MODIFICACIÓN DE CERRAR SESION ---
   const handleCerrarSesion = async () => {
     try {
-      await AsyncStorage.clear() // Borra los datos de sesión guardados
+      await AsyncStorage.clear()
       setUsuario(null)
-      // Redirige específicamente a la pantalla de Login
-      router.replace("/(auth)/login") 
+      router.replace("/(auth)/login")
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
     }
@@ -76,7 +74,8 @@ const Perfil = () => {
     console.log("Editar perfil - Próximamente")
   }
 
-  // Redirige a la pantalla de historial de alquileres (usuario normal)
+  // --- FUNCIONES DE NAVEGACIÓN ---
+
   const handleHistorialAlquileres = () => {
     // @ts-ignore
     router.push("/HistorialAlquileresScreen")
@@ -87,6 +86,7 @@ const Perfil = () => {
     router.push("/HistorialComprasScreen")
   }
 
+  // Solo Admin
   const handleAdminTransacciones = () => {
     // @ts-ignore
     router.push("/AdminTransaccionesScreen")
@@ -95,6 +95,11 @@ const Perfil = () => {
   const handleAdminDevoluciones = () => {
     // @ts-ignore
     router.push("/AdminDevolucionesScreen")
+  }
+
+  const handleAdminSolicitudes = () => {
+    // @ts-ignore
+    router.push("/AdminSolicitudesScreen")
   }
 
   const handleRanking = () => {
@@ -245,30 +250,45 @@ const Perfil = () => {
         {/* --- SECCIÓN DE ADMINISTRADOR --- */}
         {usuario.is_admin && (
           <>
+            {/* 1. Solicitudes de Alquiler (NUEVO) */}
+            <TouchableOpacity style={styles.actionCard} onPress={handleAdminSolicitudes}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="notifications-outline" size={24} color="#8B5CF6" />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>Solicitudes de Alquiler</Text>
+                <Text style={styles.actionSubtitle}>Aprobar o rechazar solicitudes</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* 2. Transacciones */}
             <TouchableOpacity style={styles.actionCard} onPress={handleAdminTransacciones}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
               </View>
               <View style={styles.actionContent}>
                 <Text style={styles.actionTitle}>Administrar Transacciones</Text>
-                <Text style={styles.actionSubtitle}>Gestionar todas las transacciones</Text>
+                <Text style={styles.actionSubtitle}>Gestionar pagos de tokens</Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
             </TouchableOpacity>
 
+            {/* 3. Devoluciones */}
             <TouchableOpacity style={styles.actionCard} onPress={handleAdminDevoluciones}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="return-up-back-outline" size={24} color="#F59E0B" />
               </View>
               <View style={styles.actionContent}>
                 <Text style={styles.actionTitle}>Administrar Devoluciones</Text>
-                <Text style={styles.actionSubtitle}>Ver códigos de devolución activos</Text>
+                <Text style={styles.actionSubtitle}>Ver códigos de retorno</Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
             </TouchableOpacity>
           </>
         )}
 
+        {/* Ranking */}
         <TouchableOpacity style={styles.actionCard} onPress={handleRanking}>
           <View style={styles.actionIconContainer}>
             <Ionicons name="trophy-outline" size={24} color="#F59E0B" />

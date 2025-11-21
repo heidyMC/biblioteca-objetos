@@ -15,15 +15,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 
-// Tipos basados en tu BD
+// Tipos basados en tu BD y nuevos estados
 type Alquiler = {
   id: string;
   fecha_inicio: string;
   fecha_fin: string;
   dias_alquiler: number;
   tokens_totales: number;
-  estado: "activo" | "completado" | "extendido" | "pendiente_devolucion";
+  estado: "activo" | "completado" | "extendido" | "pendiente_devolucion" | "pendiente_aprobacion" | "rechazado";
   codigo_devolucion?: string;
+  created_at: string;
   objetos: {
     nombre: string;
     imagen_url: string;
@@ -79,6 +80,8 @@ export default function HistorialAlquileresScreen() {
       case "completado": return "#10B981"; // Verde
       case "pendiente_devolucion": return "#F59E0B"; // Naranja
       case "extendido": return "#8B5CF6"; // Morado
+      case "pendiente_aprobacion": return "#A855F7"; // Violeta/Morado
+      case "rechazado": return "#EF4444"; // Rojo
       default: return "#6B7280"; // Gris
     }
   };
@@ -89,6 +92,8 @@ export default function HistorialAlquileresScreen() {
       case "completado": return "Devuelto";
       case "pendiente_devolucion": return "Devolución Pendiente";
       case "extendido": return "Extendido";
+      case "pendiente_aprobacion": return "Esperando Aprobación";
+      case "rechazado": return "Rechazado";
       default: return estado;
     }
   };
@@ -96,7 +101,6 @@ export default function HistorialAlquileresScreen() {
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    // Ajustar zona horaria si es necesario, o usar split para fechas YYYY-MM-DD
     return date.toLocaleDateString("es-ES", { day: 'numeric', month: 'short' });
   };
 
@@ -154,10 +158,21 @@ export default function HistorialAlquileresScreen() {
                 </View>
               </View>
               
+              {/* Mostrar código solo si está pendiente de devolución */}
               {item.estado === 'pendiente_devolucion' && item.codigo_devolucion && (
                 <View style={styles.footerPending}>
                   <Text style={styles.footerText}>Código activo: </Text>
                   <Text style={styles.footerCode}>{item.codigo_devolucion}</Text>
+                </View>
+              )}
+
+              {/* Mensaje si está en espera de aprobación */}
+              {item.estado === 'pendiente_aprobacion' && (
+                <View style={styles.footerInfo}>
+                  <Ionicons name="time-outline" size={14} color="#A855F7" />
+                  <Text style={{ fontSize: 12, color: "#A855F7", marginLeft: 4 }}>
+                    El admin está revisando tu solicitud.
+                  </Text>
                 </View>
               )}
             </View>
@@ -203,7 +218,7 @@ const styles = StyleSheet.create({
   tokensRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tokensText: { fontSize: 12, fontWeight: "700", color: "#1E293B" },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  statusText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
+  statusText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase", textAlign: 'center' },
   footerPending: {
     marginTop: 12,
     paddingTop: 12,
@@ -213,6 +228,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8
+  },
+  footerInfo: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    flexDirection: "row",
+    alignItems: "center",
   },
   footerText: { fontSize: 12, color: "#64748B" },
   footerCode: { fontSize: 14, fontWeight: "900", color: "#F59E0B", letterSpacing: 1 },

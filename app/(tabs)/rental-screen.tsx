@@ -1,34 +1,36 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  StyleSheet,
-  Image,
-  ActivityIndicator,
-  ScrollView,
-  TouchableOpacity,
-  Text,
-  Modal,
-  Platform,
-} from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import TextComponent from "@/components/ui/text-component";
+import { supabase } from "@/lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "@/lib/supabase";
-import { Alert } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface Usuario { id: string; nombre?: string; foto_url?: string; tokens_disponibles?: number; }
-interface Producto { id: string; 
+interface Producto { 
+  id: string; 
   nombre: string; 
   descripcion?: string; 
   precio_tokens_dia: number; 
   imagen_url?: string; 
   categorias?: { nombre?: string }; 
-  disponible: boolean;}
+  disponible: boolean;
+}
 
 export default function Confirmar() {
   const router = useRouter();
@@ -46,6 +48,7 @@ export default function Confirmar() {
   const [showPicker, setShowPicker] = useState<{ start: boolean; end: boolean }>({ start: false, end: false });
   const [confirmando, setConfirmando] = useState(false);
   const [existingAlquilerId, setExistingAlquilerId] = useState<string | null>(null);
+  
   // cálculo tokens
   const precioPorDia = producto?.precio_tokens_dia ?? 0;
   const total = precioPorDia * dias;
@@ -53,298 +56,296 @@ export default function Confirmar() {
   const necesita = Math.max(0, total - tokensUsuario);
   const puedeAlquilar = tokensUsuario >= total;
 
-const toLocalDateOnly = (d: Date | string) => {
-  const x = typeof d === "string" ? new Date(d) : new Date(d);
-  return new Date(x.getFullYear(), x.getMonth(), x.getDate());
-};
-
-useEffect(() => {
-  const load = async () => {
-    setLoading(true);
-    try {
-      const u = await AsyncStorage.getItem("usuario");
-      if (u) setUsuario(JSON.parse(u));
-    } catch (e) {
-      console.warn("Error leyendo usuario:", e);
-    }
-
-    if (paramProducto) {
-      try {
-        const parsed: Producto = JSON.parse(paramProducto);
-        setProducto(parsed);
-        setLoading(false);
-        await checkExistingAlquiler(parsed.id);
-        return;
-      } catch (e) {
-        console.warn("No se pudo parsear param.producto", e);
-      }
-    }
-
-    if (paramId) {
-      const { data, error } = await supabase
-        .from("objetos")
-        .select("*, categorias ( nombre )")
-        .eq("id", paramId)
-        .single();
-      if (error) {
-        console.error("Error fetch producto:", error);
-      } else {
-        setProducto(data as Producto);
-        await checkExistingAlquiler((data as Producto).id);
-      }
-    } else {
-      console.warn("Confirmar: no se recibió id ni producto en params");
-    }
-
-    setLoading(false);
+  const toLocalDateOnly = (d: Date | string) => {
+    const x = typeof d === "string" ? new Date(d) : new Date(d);
+    return new Date(x.getFullYear(), x.getMonth(), x.getDate());
   };
 
-  load();
-}, [paramProducto, paramId]); 
-
-const checkExistingAlquiler = async (objId: string) => {
-  // Asegurarse de tener usuario
-  if (!usuario) {
-    const u = await AsyncStorage.getItem("usuario");
-    if (!u) return;
-    setUsuario(JSON.parse(u));
-  }
-  const currentUser = usuario ? usuario : (await AsyncStorage.getItem("usuario")) ? JSON.parse(await AsyncStorage.getItem("usuario") || "{}") : null;
-  if (!currentUser) return;
-
-  const { data, error } = await supabase
-    .from("alquileres")
-    .select("*")
-    .eq("usuario_id", currentUser.id)
-    .eq("objeto_id", objId)
-    .eq("estado", "activo")
-    .limit(1)
-    .single();
-
-  if (!error && data) {
-    setExistingAlquilerId(data.id);
-    // parsear fechas en Date y normalizar
-    const inicio = toLocalDateOnly(new Date(data.fecha_inicio));
-    const fin = toLocalDateOnly(new Date(data.fecha_fin));
-    setFechaInicio(inicio);
-    setFechaFin(fin);
-    const diasCalc = Math.max(1, Math.ceil((fin.getTime() - inicio.getTime()) / (1000 * 3600 * 24)));
-    setDias(diasCalc);
-  }
-};
-
-const formatDate = (d: Date) => {
-  const dt = toLocalDateOnly(d);
-  const yyyy = dt.getFullYear();
-  const mm = String(dt.getMonth() + 1).padStart(2, "0");
-  const dd = String(dt.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-const recalcDiasFromDates = (inicio: Date, fin: Date) => {
-  const s = toLocalDateOnly(inicio).getTime();
-  const e = toLocalDateOnly(fin).getTime();
-  const diff = Math.ceil((e - s) / (1000 * 3600 * 24));
-  return Math.max(1, diff);
-};
-
-const openDateModal = () => setModalVisible(true);
-const cancelDateModal = () => {
-  setModalVisible(false);
-};
-
-const saveDateModal = async () => {
-  const newDias = recalcDiasFromDates(fechaInicio, fechaFin);
-  setDias(newDias);
-
-  if (existingAlquilerId) {
-    try {
-      const payloadUpdate = {
-        fecha_inicio: formatDate(fechaInicio),
-        fecha_fin: formatDate(fechaFin),
-        dias_alquiler: newDias,
-        tokens_totales: (producto?.precio_tokens_dia ?? 0) * newDias,
-      };
-      const { error } = await supabase
-        .from("alquileres")
-        .update(payloadUpdate)
-        .eq("id", existingAlquilerId);
-
-      if (error) {
-        console.error("Error actualizando alquiler:", error);
-        Alert.alert("Error", "No se pudo actualizar la reserva. Intenta de nuevo.");
-      } else {
-        Alert.alert("Listo", "Fechas actualizadas correctamente.");
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const u = await AsyncStorage.getItem("usuario");
+        if (u) setUsuario(JSON.parse(u));
+      } catch (e) {
+        console.warn("Error leyendo usuario:", e);
       }
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Ocurrió un error actualizando las fechas.");
+
+      if (paramProducto) {
+        try {
+          const parsed: Producto = JSON.parse(paramProducto);
+          setProducto(parsed);
+          setLoading(false);
+          await checkExistingAlquiler(parsed.id);
+          return;
+        } catch (e) {
+          console.warn("No se pudo parsear param.producto", e);
+        }
+      }
+
+      if (paramId) {
+        const { data, error } = await supabase
+          .from("objetos")
+          .select("*, categorias ( nombre )")
+          .eq("id", paramId)
+          .single();
+        if (error) {
+          console.error("Error fetch producto:", error);
+        } else {
+          setProducto(data as Producto);
+          await checkExistingAlquiler((data as Producto).id);
+        }
+      } else {
+        console.warn("Confirmar: no se recibió id ni producto en params");
+      }
+
+      setLoading(false);
+    };
+
+    load();
+  }, [paramProducto, paramId]); 
+
+  const checkExistingAlquiler = async (objId: string) => {
+    // Asegurarse de tener usuario
+    if (!usuario) {
+      const u = await AsyncStorage.getItem("usuario");
+      if (!u) return;
+      setUsuario(JSON.parse(u));
     }
-  } else {
-    Alert.alert("Se guardó la fecha");
-  }
+    const currentUser = usuario ? usuario : (await AsyncStorage.getItem("usuario")) ? JSON.parse(await AsyncStorage.getItem("usuario") || "{}") : null;
+    if (!currentUser) return;
 
-  setModalVisible(false);
-};
-
-const handleIncrement = () => {
-  const nd = Math.min(30, dias + 1);
-  setDias(nd);
-  const f = new Date(fechaInicio);
-  f.setDate(f.getDate() + nd);
-  setFechaFin(f);
-};
-const handleDecrement = () => {
-  const nd = Math.max(1, dias - 1);
-  setDias(nd);
-  const f = new Date(fechaInicio);
-  f.setDate(f.getDate() + nd);
-  setFechaFin(f);
-};
-
-const handleConfirmar = async () => {
-  if (!usuario) return Alert.alert("Inicia sesión", "Debes iniciar sesión para confirmar el alquiler.");
-  if (!producto) return Alert.alert("Error", "Producto no encontrado.");
-  if (!producto.disponible) return Alert.alert("No disponible", "Este objeto ya no está disponible para alquilar.");
-
-  // Normalizar y validar fechas ANTES de tocar la BD
-  const inicioDate = toLocalDateOnly(fechaInicio);
-  const finDate = toLocalDateOnly(fechaFin);
-  const inicioStr = formatDate(inicioDate);
-  const finStr = formatDate(finDate);
-
-  const hoy = toLocalDateOnly(new Date());
-
-  if (inicioDate.getTime() < hoy.getTime()) {
-    return Alert.alert("Fecha inválida", "La fecha de inicio no puede ser anterior a hoy.");
-  }
-  if (finDate.getTime() < inicioDate.getTime()) {
-    return Alert.alert("Fecha inválida", "La fecha de fin debe ser la misma o posterior a la fecha de inicio.");
-  }
-
-  const diasCalc = Math.max(1, Math.ceil((finDate.getTime() - inicioDate.getTime()) / (1000 * 3600 * 24)));
-  const precioPorDia = producto?.precio_tokens_dia ?? 0;
-  const nuevoTotal = precioPorDia * diasCalc;
-  const tokensUsuario = usuario?.tokens_disponibles ?? 0;
-
-  try {
-    setConfirmando(true);
-
-    // Verificar disponibilidad actual en DB (evitar race)
-    const { data: prodActual, error: prodErr } = await supabase
-      .from("objetos")
-      .select("id, disponible")
-      .eq("id", producto.id)
+    const { data, error } = await supabase
+      .from("alquileres")
+      .select("*")
+      .eq("usuario_id", currentUser.id)
+      .eq("objeto_id", objId)
+      .in("estado", ["activo", "extendido"]) // Solo alquileres activos pueden ser extendidos
+      .limit(1)
       .single();
 
-    if (prodErr) {
-      console.error("Error verificando producto:", prodErr);
-      setConfirmando(false);
-      return Alert.alert("Error", "No se pudo verificar la disponibilidad. Intenta nuevamente.");
+    if (!error && data) {
+      setExistingAlquilerId(data.id);
+      // parsear fechas en Date y normalizar
+      const inicio = toLocalDateOnly(new Date(data.fecha_inicio));
+      const fin = toLocalDateOnly(new Date(data.fecha_fin));
+      setFechaInicio(inicio);
+      setFechaFin(fin);
+      const diasCalc = Math.max(1, Math.ceil((fin.getTime() - inicio.getTime()) / (1000 * 3600 * 24)));
+      setDias(diasCalc);
     }
-    if (!prodActual.disponible) {
-      setConfirmando(false);
-      return Alert.alert("No disponible", "Este objeto ya fue alquilado por otro usuario.");
-    }
+  };
+
+  const formatDate = (d: Date) => {
+    const dt = toLocalDateOnly(d);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const recalcDiasFromDates = (inicio: Date, fin: Date) => {
+    const s = toLocalDateOnly(inicio).getTime();
+    const e = toLocalDateOnly(fin).getTime();
+    const diff = Math.ceil((e - s) / (1000 * 3600 * 24));
+    return Math.max(1, diff);
+  };
+
+  const openDateModal = () => setModalVisible(true);
+  const cancelDateModal = () => {
+    setModalVisible(false);
+  };
+
+  const saveDateModal = async () => {
+    const newDias = recalcDiasFromDates(fechaInicio, fechaFin);
+    setDias(newDias);
 
     if (existingAlquilerId) {
-      // actualizar alquiler existente (calcular delta)
-      const { data: existing, error: e1 } = await supabase
-        .from("alquileres")
-        .select("id, tokens_totales")
-        .eq("id", existingAlquilerId)
-        .single();
+      // Lógica solo para actualizar UI temporal, la confirmación real se hace en handleConfirmar
+      Alert.alert("Fecha ajustada", "Confirma la extensión para aplicar los cambios.");
+    }
+    setModalVisible(false);
+  };
 
-      if (e1) throw e1;
+  const handleIncrement = () => {
+    const nd = Math.min(30, dias + 1);
+    setDias(nd);
+    const f = new Date(fechaInicio);
+    f.setDate(f.getDate() + nd);
+    setFechaFin(f);
+  };
+  const handleDecrement = () => {
+    const nd = Math.max(1, dias - 1);
+    setDias(nd);
+    const f = new Date(fechaInicio);
+    f.setDate(f.getDate() + nd);
+    setFechaFin(f);
+  };
 
-      const oldTotal = existing?.tokens_totales ?? 0;
-      const delta = nuevoTotal - oldTotal; 
+  const handleConfirmar = async () => {
+    if (!usuario) return Alert.alert("Inicia sesión", "Debes iniciar sesión para confirmar el alquiler.");
+    if (!producto) return Alert.alert("Error", "Producto no encontrado.");
+    
+    // Si es nuevo alquiler, verificar disponibilidad. Si es extensión, ya lo tiene.
+    if (!existingAlquilerId && !producto.disponible) {
+        return Alert.alert("No disponible", "Este objeto ya no está disponible para alquilar.");
+    }
 
-      if (delta > 0 && tokensUsuario < delta) {
-        setConfirmando(false);
-        return Alert.alert("Tokens insuficientes", `Te faltan ${delta} tokens para ampliar el alquiler.`);
+    // Normalizar y validar fechas ANTES de tocar la BD
+    const inicioDate = toLocalDateOnly(fechaInicio);
+    const finDate = toLocalDateOnly(fechaFin);
+    const inicioStr = formatDate(inicioDate);
+    const finStr = formatDate(finDate);
+
+    const hoy = toLocalDateOnly(new Date());
+
+    if (!existingAlquilerId && inicioDate.getTime() < hoy.getTime()) {
+      return Alert.alert("Fecha inválida", "La fecha de inicio no puede ser anterior a hoy.");
+    }
+    if (finDate.getTime() < inicioDate.getTime()) {
+      return Alert.alert("Fecha inválida", "La fecha de fin debe ser la misma o posterior a la fecha de inicio.");
+    }
+
+    const diasCalc = Math.max(1, Math.ceil((finDate.getTime() - inicioDate.getTime()) / (1000 * 3600 * 24)));
+    const precioPorDia = producto?.precio_tokens_dia ?? 0;
+    const nuevoTotal = precioPorDia * diasCalc;
+    const tokensUsuario = usuario?.tokens_disponibles ?? 0;
+
+    try {
+      setConfirmando(true);
+
+      // Verificar disponibilidad actual en DB (evitar race condition) solo para nuevos
+      if (!existingAlquilerId) {
+          const { data: prodActual, error: prodErr } = await supabase
+            .from("objetos")
+            .select("id, disponible")
+            .eq("id", producto.id)
+            .single();
+
+          if (prodErr) {
+            console.error("Error verificando producto:", prodErr);
+            setConfirmando(false);
+            return Alert.alert("Error", "No se pudo verificar la disponibilidad. Intenta nuevamente.");
+          }
+          if (!prodActual.disponible) {
+            setConfirmando(false);
+            return Alert.alert("No disponible", "Este objeto ya fue alquilado por otro usuario.");
+          }
       }
 
-      const { error: updErr } = await supabase
-        .from("alquileres")
-        .update({
+      if (existingAlquilerId) {
+        // === EXTENSIÓN DE ALQUILER (MANTIENE ESTADO ACTIVO O EXTENDIDO) ===
+        // Actualizar alquiler existente (calcular diferencia de costo)
+        const { data: existing, error: e1 } = await supabase
+          .from("alquileres")
+          .select("id, tokens_totales")
+          .eq("id", existingAlquilerId)
+          .single();
+
+        if (e1) throw e1;
+
+        const oldTotal = existing?.tokens_totales ?? 0;
+        const delta = nuevoTotal - oldTotal; 
+
+        if (delta > 0 && tokensUsuario < delta) {
+          setConfirmando(false);
+          return Alert.alert("Tokens insuficientes", `Te faltan ${delta} tokens para ampliar el alquiler.`);
+        }
+
+        const { error: updErr } = await supabase
+          .from("alquileres")
+          .update({
+            fecha_fin: finStr,
+            dias_alquiler: diasCalc,
+            tokens_totales: nuevoTotal,
+            estado: 'extendido' // Opcional: marcar como extendido
+          })
+          .eq("id", existingAlquilerId);
+
+        if (updErr) throw updErr;
+
+        if (delta > 0) {
+          const nuevoSaldo = tokensUsuario - delta;
+          const { error: userUpdErr } = await supabase
+            .from("usuarios")
+            .update({ tokens_disponibles: nuevoSaldo })
+            .eq("id", usuario.id);
+
+          if (userUpdErr) throw userUpdErr;
+
+          const usuarioActualizado = { ...usuario, tokens_disponibles: nuevoSaldo };
+          setUsuario(usuarioActualizado);
+          await AsyncStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+        }
+        
+        Alert.alert("¡Listo!", "Alquiler extendido correctamente.");
+
+      } else {
+        // === NUEVO ALQUILER (SOLICITUD PENDIENTE) ===
+        
+        const payload = {
+          usuario_id: usuario.id,
+          objeto_id: producto.id,
           fecha_inicio: inicioStr,
           fecha_fin: finStr,
           dias_alquiler: diasCalc,
           tokens_totales: nuevoTotal,
-        })
-        .eq("id", existingAlquilerId);
+          estado: "pendiente_aprobacion", // <--- CAMBIO CLAVE: Requiere aprobación
+          created_at: new Date().toISOString(),
+        };
 
-      if (updErr) throw updErr;
+        if (tokensUsuario < nuevoTotal) {
+          setConfirmando(false);
+          return Alert.alert("Tokens insuficientes", `Te faltan ${nuevoTotal - tokensUsuario} tokens.`);
+        }
 
-      if (delta !== 0) {
-        const nuevoSaldo = tokensUsuario - delta;
+        // 1. Insertar alquiler pendiente
+        const { error: insErr } = await supabase.from("alquileres").insert([payload]);
+        if (insErr) throw insErr;
+
+        // 2. Marcar objeto como NO disponible (Reservado)
+        const { error: updateError } = await supabase
+          .from("objetos")
+          .update({ disponible: false })
+          .eq("id", producto.id);
+
+        if (updateError) {
+          console.warn("Alquiler insertado, pero error reservando objeto:", updateError);
+        } else {
+          // Sincronizar UI local
+          setProducto((p) => (p && p.id === producto.id ? { ...p, disponible: false } : p));
+        }
+
+        // 3. Descontar tokens al usuario (Pago por reserva)
+        const nuevoSaldo = tokensUsuario - nuevoTotal;
         const { error: userUpdErr } = await supabase
           .from("usuarios")
           .update({ tokens_disponibles: nuevoSaldo })
           .eq("id", usuario.id);
-
+        
         if (userUpdErr) throw userUpdErr;
 
         const usuarioActualizado = { ...usuario, tokens_disponibles: nuevoSaldo };
         setUsuario(usuarioActualizado);
         await AsyncStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
-      }
-    } else {
-      const payload = {
-        usuario_id: usuario.id,
-        objeto_id: producto.id,
-        fecha_inicio: inicioStr,
-        fecha_fin: finStr,
-        dias_alquiler: diasCalc,
-        tokens_totales: nuevoTotal,
-        estado: "activo",
-        created_at: new Date().toISOString(),
-      };
-
-      if (tokensUsuario < nuevoTotal) {
-        setConfirmando(false);
-        return Alert.alert("Tokens insuficientes", `Te faltan ${nuevoTotal - tokensUsuario} tokens.`);
+        
+        Alert.alert(
+            "Solicitud Enviada", 
+            "Tu solicitud ha sido enviada al administrador. Espera la aprobación para recoger el objeto."
+        );
       }
 
-      const { error: insErr } = await supabase.from("alquileres").insert([payload]);
-      if (insErr) throw insErr;
-      const { error: updateError } = await supabase
-        .from("objetos")
-        .update({ disponible: false })
-        .eq("id", producto.id);
-
-      if (updateError) {
-        console.warn("Alquiler insertado, pero NO se pudo marcar como no disponible:", updateError);
-        Alert.alert("Advertencia", "Alquiler guardado, pero no se pudo marcar el objeto como no disponible.");
-      } else {
-        // sincronizar la UI local
-        setProducto((p) => (p && p.id === producto.id ? { ...p, disponible: false } : p));
-      }
-      const nuevoSaldo = tokensUsuario - nuevoTotal;
-      const { error: userUpdErr } = await supabase
-        .from("usuarios")
-        .update({ tokens_disponibles: nuevoSaldo })
-        .eq("id", usuario.id);
-      if (userUpdErr) throw userUpdErr;
-
-      const usuarioActualizado = { ...usuario, tokens_disponibles: nuevoSaldo };
-      setUsuario(usuarioActualizado);
-      await AsyncStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
+      router.back();
+    } catch (err: any) {
+      console.error("Error al confirmar:", err);
+      Alert.alert("Error", err.message || "No se pudo confirmar. Reintenta.");
+    } finally {
+      setConfirmando(false);
     }
+  };
 
-    Alert.alert("¡Listo!", "Alquiler guardado.");
-    router.back();
-  } catch (err: any) {
-    console.error("Error al confirmar:", err);
-    Alert.alert("Error", err.message || "No se pudo confirmar. Reintenta.");
-  } finally {
-    setConfirmando(false);
-  }
-};
-
-if (loading) return (<View style={[styles.container, styles.center]}><ActivityIndicator size="large" /></View>);
-if (!producto) return (<View style={[styles.container, styles.center]}><TextComponent text="No se encontró el producto." textColor="red" textSize={16} /></View>);
+  if (loading) return (<View style={[styles.container, styles.center]}><ActivityIndicator size="large" /></View>);
+  if (!producto) return (<View style={[styles.container, styles.center]}><TextComponent text="No se encontró el producto." textColor="red" textSize={16} /></View>);
 
   return (
     <>
@@ -353,7 +354,7 @@ if (!producto) return (<View style={[styles.container, styles.center]}><TextComp
           <TouchableOpacity onPress={() => router.back()}>
             <TextComponent text="←" textSize={28} fontWeight="bold" />
           </TouchableOpacity>
-          <TextComponent text="Confirmar Alquiler" fontWeight="bold" textSize={20} style={{ flex: 1, textAlign: "center", marginRight: 25 }} />
+          <TextComponent text={existingAlquilerId ? "Extender Alquiler" : "Solicitar Alquiler"} fontWeight="bold" textSize={20} style={{ flex: 1, textAlign: "center", marginRight: 25 }} />
         </View>
 
         <View style={styles.productCard}>
@@ -390,7 +391,7 @@ if (!producto) return (<View style={[styles.container, styles.center]}><TextComp
           </View>
         </View>
 
-        {/* summary y botones (igual que antes) */}
+        {/* summary y botones */}
         <View style={styles.card}>
           <TextComponent text="Resumen de Pago" fontWeight="bold" textSize={18} />
           <View style={styles.summaryRow}><TextComponent text="Precio por día" textSize={14} textColor="#6B7280" /><TextComponent text={`⛏️ ${precioPorDia}`} textSize={14} fontWeight="bold" /></View>
@@ -408,7 +409,7 @@ if (!producto) return (<View style={[styles.container, styles.center]}><TextComp
         <View style={{ paddingHorizontal: 6, marginTop: 18 }}>
           <TouchableOpacity onPress={handleConfirmar} disabled={!puedeAlquilar || confirmando} activeOpacity={0.9}>
             <LinearGradient colors={["#8B5CF6", "#60A5FA"]} start={[0, 0]} end={[1, 0]} style={[styles.confirmButton, (!puedeAlquilar || confirmando) && { opacity: 0.5 }]}>
-              {confirmando ? <ActivityIndicator color="#fff" /> : <TextComponent text="Confirmar Alquiler" fontWeight="bold" textSize={16} textColor="#fff" />}
+              {confirmando ? <ActivityIndicator color="#fff" /> : <TextComponent text={existingAlquilerId ? "Extender Alquiler" : "Solicitar Alquiler"} fontWeight="bold" textSize={16} textColor="#fff" />}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -419,7 +420,7 @@ if (!producto) return (<View style={[styles.container, styles.center]}><TextComp
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <TextComponent text="Cambiar fecha" fontWeight="bold" textSize={18} />
-            <TextComponent text={`Hora del entrega: 8:00 a.m. - 5:00 p.m.`} textSize={13} textColor="#6B7280" style={{ marginTop: 8 }} />
+            <TextComponent text={`Hora de entrega: 8:00 a.m. - 5:00 p.m.`} textSize={13} textColor="#6B7280" style={{ marginTop: 8 }} />
 
             {/* Fecha inicio */}
             <View style={{ marginTop: 12 }}>
