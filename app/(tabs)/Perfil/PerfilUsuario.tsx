@@ -31,7 +31,7 @@ const Perfil = () => {
           if (data) {
             const usuarioLocal = JSON.parse(data)
 
-            // Obtener datos actualizados desde Supabase
+            // Obtener datos actualizados desde Supabase para asegurar sincronización
             const { data: usuarioDb, error } = await supabase
               .from("usuarios")
               .select("*")
@@ -60,11 +60,13 @@ const Perfil = () => {
     }, []),
   )
 
+  // --- MODIFICACIÓN DE CERRAR SESION ---
   const handleCerrarSesion = async () => {
     try {
-      await AsyncStorage.clear()
+      await AsyncStorage.clear() // Borra los datos de sesión guardados
       setUsuario(null)
-      router.replace("/(tabs)/HomeMenu/mainScreen")
+      // Redirige específicamente a la pantalla de Login
+      router.replace("/(auth)/login") 
     } catch (error) {
       console.error("Error al cerrar sesión:", error)
     }
@@ -120,8 +122,8 @@ const Perfil = () => {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.noUserText}>No hay usuario logueado</Text>
-        <TouchableOpacity style={styles.loginButton} onPress={irAHome}>
-          <Text style={styles.loginButtonText}>Ir a Inicio</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={() => router.replace("/(auth)/login")}>
+          <Text style={styles.loginButtonText}>Ir al Login</Text>
         </TouchableOpacity>
       </View>
     )
