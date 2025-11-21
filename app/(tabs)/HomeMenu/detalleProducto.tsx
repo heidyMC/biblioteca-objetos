@@ -3,7 +3,7 @@
 import TextComponent from "@/components/ui/text-component";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,10 +14,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
-import { supabase } from "../../../lib/supabase";
+// Cambiamos MapView por WebView
 import { useFocusEffect } from "@react-navigation/native";
 import React from "react";
+import { WebView } from "react-native-webview";
+import { supabase } from "../../../lib/supabase";
 
 interface Usuario {
   id: string;
@@ -261,27 +262,49 @@ const DetalleProducto = () => {
             </View>
           )}
 
-          {/* Mapa */}
+          {/* Mapa con Leaflet (OpenStreetMap) */}
           {objeto.latitud && objeto.longitud && (
             <View style={styles.mapContainer}>
               <TextComponent text="📍 Ubicación del Producto" fontWeight="bold" textSize={18} textColor="#1E293B" />
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: objeto.latitud,
-                  longitude: objeto.longitud,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-              >
-                <Marker coordinate={{ latitude: objeto.latitud, longitude: objeto.longitud }} title={objeto.nombre} />
-              </MapView>
+              <View style={styles.mapBox}>
+                <WebView
+                  originWhitelist={['*']}
+                  source={{ html: `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+                      <style>
+                        body { margin: 0; padding: 0; }
+                        #map { height: 100vh; width: 100vw; }
+                      </style>
+                    </head>
+                    <body>
+                      <div id="map"></div>
+                      <script>
+                        var map = L.map('map', {zoomControl: false}).setView([${objeto.latitud}, ${objeto.longitud}], 15);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          maxZoom: 19,
+                          attribution: '© OpenStreetMap'
+                        }).addTo(map);
+                        L.marker([${objeto.latitud}, ${objeto.longitud}]).addTo(map);
+                      </script>
+                    </body>
+                    </html>
+                  `}}
+                  style={{ flex: 1 }}
+                  scrollEnabled={false} // Deshabilita scroll del WebView para evitar conflictos
+                />
+              </View>
             </View>
           )}
+
           <TouchableOpacity
             style={[styles.alquilarButton, !canRent && styles.alquilarButtonDisabled]}
             onPress={() => {
-              if (!canRent) return; // seguro extra
+              if (!canRent) return;
               router.push({
                 pathname: '/(tabs)/rental-screen',
                 params: { producto: JSON.stringify(objeto) },
@@ -403,7 +426,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  // estilo aplicado cuando NO se puede alquilar
   alquilarButtonDisabled: {
     backgroundColor: "#9CA3AF",
     opacity: 0.9,
@@ -411,13 +433,18 @@ const styles = StyleSheet.create({
   mapContainer: {
     marginTop: 20,
     borderRadius: 10,
-    overflow: "hidden",
+    marginBottom: 10,
+  },
+  // Contenedor específico para el WebView
+  mapBox: {
+    width: "100%",
+    height: 250, // Altura fija necesaria para el WebView
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: "hidden", // Importante para bordes redondeados en WebView
     borderWidth: 1,
     borderColor: "#d1d5db",
-  },
-  map: {
-    width: "100%",
-    height: 200,
+    backgroundColor: "#e5e7eb", // Fondo mientras carga
   },
   reviewCard: {
     flexDirection: "row",
