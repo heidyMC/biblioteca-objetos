@@ -74,15 +74,25 @@ const Perfil = () => {
     console.log("Editar perfil - Próximamente")
   }
 
-  const handleHistorialCompra = () => {
-    console.log("Historial de compra")
+  // Redirige a la pantalla de historial de alquileres (usuario normal)
+  const handleHistorialAlquileres = () => {
+    // @ts-ignore
+    router.push("/HistorialAlquileresScreen")
   }
-const handleHistorialCompras = () => {
+
+  const handleHistorialCompras = () => {
+    // @ts-ignore
     router.push("/HistorialComprasScreen")
   }
 
   const handleAdminTransacciones = () => {
+    // @ts-ignore
     router.push("/AdminTransaccionesScreen")
+  }
+
+  const handleAdminDevoluciones = () => {
+    // @ts-ignore
+    router.push("/AdminDevolucionesScreen")
   }
 
   const handleRanking = () => {
@@ -206,7 +216,8 @@ const handleHistorialCompras = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Acciones</Text>
 
-        <TouchableOpacity style={styles.actionCard} onPress={handleHistorialCompra}>
+        {/* Historial de Alquileres */}
+        <TouchableOpacity style={styles.actionCard} onPress={handleHistorialAlquileres}>
           <View style={styles.actionIconContainer}>
             <Ionicons name="time-outline" size={24} color="#6366F1" />
           </View>
@@ -217,6 +228,7 @@ const handleHistorialCompras = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
+        {/* Historial de Compras */}
          <TouchableOpacity style={styles.actionCard} onPress={handleHistorialCompras}>
           <View style={styles.actionIconContainer}>
             <Ionicons name="card-outline" size={24} color="#6366F1" />
@@ -228,17 +240,31 @@ const handleHistorialCompras = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
+        {/* --- SECCIÓN DE ADMINISTRADOR --- */}
         {usuario.is_admin && (
-          <TouchableOpacity style={styles.actionCard} onPress={handleAdminTransacciones}>
-            <View style={styles.actionIconContainer}>
-              <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
-            </View>
-            <View style={styles.actionContent}>
-              <Text style={styles.actionTitle}>Administrar Transacciones</Text>
-              <Text style={styles.actionSubtitle}>Gestionar todas las transacciones</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.actionCard} onPress={handleAdminTransacciones}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>Administrar Transacciones</Text>
+                <Text style={styles.actionSubtitle}>Gestionar todas las transacciones</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionCard} onPress={handleAdminDevoluciones}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="return-up-back-outline" size={24} color="#F59E0B" />
+              </View>
+              <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>Administrar Devoluciones</Text>
+                <Text style={styles.actionSubtitle}>Ver códigos de devolución activos</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+            </TouchableOpacity>
+          </>
         )}
 
         <TouchableOpacity style={styles.actionCard} onPress={handleRanking}>
