@@ -3,14 +3,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
@@ -158,11 +158,13 @@ export default function HistorialAlquileresScreen() {
                 </View>
               </View>
               
-              {/* Mostrar código solo si está pendiente de devolución */}
-              {item.estado === 'pendiente_devolucion' && item.codigo_devolucion && (
+              {/* CORRECCIÓN: Ocultamos el código y mostramos instrucción */}
+              {item.estado === 'pendiente_devolucion' && (
                 <View style={styles.footerPending}>
-                  <Text style={styles.footerText}>Código activo: </Text>
-                  <Text style={styles.footerCode}>{item.codigo_devolucion}</Text>
+                  <Ionicons name="information-circle-outline" size={16} color="#F59E0B" />
+                  <Text style={styles.footerText}>
+                    Acércate al administrador para recibir el código.
+                  </Text>
                 </View>
               )}
 
@@ -227,7 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 8
+    gap: 6
   },
   footerInfo: {
     marginTop: 8,
@@ -237,8 +239,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  footerText: { fontSize: 12, color: "#64748B" },
-  footerCode: { fontSize: 14, fontWeight: "900", color: "#F59E0B", letterSpacing: 1 },
+  footerText: { fontSize: 12, color: "#64748B", fontStyle: 'italic' },
+  // Eliminado footerCode ya que no se debe mostrar
   emptyState: { alignItems: "center", marginTop: 80 },
   emptyText: { marginTop: 12, color: "#94A3B8", fontSize: 16 },
 });
