@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import {
   ActivityIndicator,
   Image,
@@ -68,37 +68,37 @@ const MainScreen = () => {
     }, []),
   )
 
-useFocusEffect(
-  useCallback(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const { data: productosData, error: errorProductos } = await supabase
-        .from("objetos")
-        .select(`
-          *,
-          categorias ( nombre )
-        `);
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        setLoading(true);
+        const { data: productosData, error: errorProductos } = await supabase
+          .from("objetos")
+          .select(`
+            *,
+            categorias ( nombre )
+          `);
 
-      if (errorProductos) {
-        console.error("Error cargando productos:", errorProductos.message);
-      } else {
-        setProductos(productosData || []);
-      }
-      const { data: categoriasData, error: errorCategorias } = await supabase
-        .from("categorias")
-        .select("id, nombre");
+        if (errorProductos) {
+          console.error("Error cargando productos:", errorProductos.message);
+        } else {
+          setProductos(productosData || []);
+        }
+        const { data: categoriasData, error: errorCategorias } = await supabase
+          .from("categorias")
+          .select("id, nombre");
 
-      if (errorCategorias) {
-        console.error("Error cargando categorías:", errorCategorias.message);
-      } else {
-        setCategorias(categoriasData || []);
-      }
-      setLoading(false);
-    };
+        if (errorCategorias) {
+          console.error("Error cargando categorías:", errorCategorias.message);
+        } else {
+          setCategorias(categoriasData || []);
+        }
+        setLoading(false);
+      };
 
-    fetchData();
-  }, [])
-);
+      fetchData();
+    }, [])
+  );
 
 
   const productosFiltrados = productos.filter((item) => {
@@ -115,7 +115,12 @@ useFocusEffect(
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerFixed}>
-        <Image source={require("@/assets/images/login-images.png")} style={styles.logo} resizeMode="contain" />
+        {/* Se actualizó la imagen de referencia */}
+        <Image 
+          source={require("@/assets/images/prestafacil-icon.jpg")} 
+          style={styles.logo} 
+          resizeMode="contain" 
+        />
         <View style={styles.profileContainer}>
           <View style={styles.tokensBadge}>
             <TextComponent

@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -191,9 +192,15 @@ export default function RegisterScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="cube" size={40} color="#FFFFFF" />
+              {/* Se actualizó la imagen y el estilo */}
+              <Image 
+                source={require("../../assets/images/prestafacil-icon.jpg")}
+                style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                resizeMode="cover"
+              />
             </View>
-            <Text style={styles.title}>Biblioteca de Objetos</Text>
+            {/* Se actualizó el nombre de la app */}
+            <Text style={styles.title}>PrestaFacil</Text>
             <Text style={styles.subtitle}>Alquila con tokens</Text>
           </View>
 
@@ -336,10 +343,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: "#6366F1",
+    // Se actualizó el fondo a blanco
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
+    overflow: "hidden", 
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   title: { fontSize: 24, fontWeight: "700", color: "#0A0A0A", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#737373" },

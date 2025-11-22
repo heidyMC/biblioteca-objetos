@@ -7,6 +7,7 @@ import * as WebBrowser from "expo-web-browser"
 import React, { useState } from "react"
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -28,7 +29,6 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
 
-  // 🧹 Limpia la caché de usuario
   const limpiarCache = async () => {
     try {
       await AsyncStorage.clear()
@@ -38,7 +38,6 @@ export default function LoginScreen() {
     }
   }
 
-  // 🔐 Inicio de sesión con correo y contraseña
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Por favor ingresa correo y contraseña")
@@ -70,7 +69,6 @@ export default function LoginScreen() {
     }
   }
 
-  // 🔑 Inicio de sesión con Google
   const signInWithGoogle = async () => {
     setIsLoading(true)
     try {
@@ -131,9 +129,14 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Ionicons name="cube" size={40} color="#FFFFFF" />
+              {/* Se actualizó la imagen y el estilo */}
+              <Image 
+                source={require("../../assets/images/prestafacil-icon.jpg")}
+                style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                resizeMode="cover"
+              />
             </View>
-            <Text style={styles.title}>Biblioteca de Objetos</Text>
+            <Text style={styles.title}>PrestaFacil</Text>
             <Text style={styles.subtitle}>Alquila con tokens</Text>
           </View>
 
@@ -142,7 +145,6 @@ export default function LoginScreen() {
             <Text style={styles.cardDescription}>Ingresa tus credenciales para acceder</Text>
 
             <View style={styles.form}>
-              {/* Correo */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Correo electrónico</Text>
                 <TextInput
@@ -155,7 +157,6 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* Contraseña */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Contraseña</Text>
                 <View style={styles.passwordContainer}>
@@ -180,7 +181,6 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* Botón principal */}
               <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleLogin}
@@ -191,14 +191,12 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
 
-              {/* Divisor */}
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>O continúa con</Text>
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Botón Google */}
               <TouchableOpacity
                 style={[styles.googleButton, isLoading && styles.buttonDisabled]}
                 onPress={signInWithGoogle}
@@ -237,10 +235,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    backgroundColor: "#6366F1",
+    // Se actualizó el fondo a blanco
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   title: { fontSize: 24, fontWeight: "700", color: "#0A0A0A", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#737373" },

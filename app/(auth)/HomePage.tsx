@@ -2,7 +2,8 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const LogoImg = require('../../assets/images/login-images.png');
+// Se actualizó la ruta a la nueva imagen
+const LogoImg = require('../../assets/images/prestafacil-icon.jpg');
 
 export default function InicioScreen() {
   const router = useRouter();
@@ -12,7 +13,8 @@ export default function InicioScreen() {
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Image source={LogoImg} style={styles.logo} resizeMode="contain" />
-        <Text style={styles.title}>Biblioteca de Objetos</Text>
+        {/* Se actualizó el nombre de la app */}
+        <Text style={styles.title}>PrestaFacil</Text>
       </View>
 
       <View style={styles.buttonsContainer}>
@@ -36,8 +38,8 @@ export default function InicioScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // ocupa toda la pantalla
-    justifyContent: 'space-between', // separa logo de botones
+    flex: 1,
+    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#fff',
     paddingVertical: 20,

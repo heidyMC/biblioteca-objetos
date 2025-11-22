@@ -1,35 +1,36 @@
 {
   "expo": {
-    "name": "biblioteca-objetos",
-    "slug": "biblioteca-objetos",
+    "name": "PrestaFacil",
+    "slug": "prestafacil",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/login-images.png",
-    "scheme": "bibliotecaobjetos",
-    "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/prestafacil-icon.jpg",
+    "scheme": "prestafacil",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jhonny.prestafacil"
     },
     "android": {
-      "package": "com.jhonny.bibliotecaobjetos",
+      "package": "com.jhonny.prestafacil",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/login-images.png"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/prestafacil-icon.jpg"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/login-images.png"
+      "favicon": "./assets/images/prestafacil-icon.jpg"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/login-images.png",
+          "image": "./assets/images/prestafacil-icon.jpg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
