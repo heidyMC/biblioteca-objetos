@@ -2,22 +2,19 @@
 
 import TextComponent from "@/components/ui/text-component";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import { WebView } from "react-native-webview";
 import { supabase } from "../../../lib/supabase";
-import { useFocusEffect } from "@react-navigation/native";
-import React from "react";
 
 interface Usuario {
   id: string;
@@ -67,9 +64,6 @@ const DetalleProducto = () => {
   const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([]);
   const [reseñas, setReseñas] = useState<Resenia[]>([]);
   const [loading, setLoading] = useState(true);
-  const [comentario, setComentario] = useState("");
-  const [calificacion, setCalificacion] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
   const searchParams = useLocalSearchParams();
@@ -162,34 +156,6 @@ const DetalleProducto = () => {
     fetchData();
   }, [productoId]);
 
-  const publicarReseña = async () => {
-    if (!usuario || !objeto) return;
-    if (!comentario.trim() || calificacion === 0) {
-      Alert.alert("Error", "Por favor, completa la reseña y selecciona una calificación.");
-      return;
-    }
-
-    setSubmitting(true);
-
-    const { error } = await supabase.from("resenia").insert({
-      id_usuario: usuario.id,
-      id_objeto: objeto.id,
-      comentario,
-      calificacion,
-    });
-
-    if (error) {
-      Alert.alert("Error", "No se pudo guardar la reseña.");
-      console.error(error.message);
-    } else {
-      setComentario("");
-      setCalificacion(0);
-      await fetchReseñas();
-    }
-
-    setSubmitting(false);
-  };
-
   const renderStars = (count: number) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
@@ -261,27 +227,49 @@ const DetalleProducto = () => {
             </View>
           )}
 
-          {/* Mapa */}
+          {/* Mapa con Leaflet (OpenStreetMap) */}
           {objeto.latitud && objeto.longitud && (
             <View style={styles.mapContainer}>
               <TextComponent text="📍 Ubicación del Producto" fontWeight="bold" textSize={18} textColor="#1E293B" />
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: objeto.latitud,
-                  longitude: objeto.longitud,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-              >
-                <Marker coordinate={{ latitude: objeto.latitud, longitude: objeto.longitud }} title={objeto.nombre} />
-              </MapView>
+              <View style={styles.mapBox}>
+                <WebView
+                  originWhitelist={['*']}
+                  source={{ html: `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+                      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+                      <style>
+                        body { margin: 0; padding: 0; }
+                        #map { height: 100vh; width: 100vw; }
+                      </style>
+                    </head>
+                    <body>
+                      <div id="map"></div>
+                      <script>
+                        var map = L.map('map', {zoomControl: false}).setView([${objeto.latitud}, ${objeto.longitud}], 15);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          maxZoom: 19,
+                          attribution: '© OpenStreetMap'
+                        }).addTo(map);
+                        L.marker([${objeto.latitud}, ${objeto.longitud}]).addTo(map);
+                      </script>
+                    </body>
+                    </html>
+                  `}}
+                  style={{ flex: 1 }}
+                  scrollEnabled={false}
+                />
+              </View>
             </View>
           )}
+
           <TouchableOpacity
             style={[styles.alquilarButton, !canRent && styles.alquilarButtonDisabled]}
             onPress={() => {
-              if (!canRent) return; // seguro extra
+              if (!canRent) return;
               router.push({
                 pathname: '/(tabs)/rental-screen',
                 params: { producto: JSON.stringify(objeto) },
@@ -295,7 +283,7 @@ const DetalleProducto = () => {
             <TextComponent text={canRent ? "🔑 Alquilar" : "⛔ No disponible"} fontWeight="bold" textSize={18} textColor="#fff" />
           </TouchableOpacity>
 
-          {/* Reseñas */}
+          {/* Listado de Reseñas (Sin formulario de agregar) */}
           <TextComponent text="★ Reseñas" fontWeight="bold" textSize={20} textColor="#1E293B" style={{ marginTop: 20 }} />
           {reseñas.length === 0 ? (
             <TextComponent text="Aún no hay reseñas." textSize={14} textColor="#6B7280" />
@@ -312,22 +300,8 @@ const DetalleProducto = () => {
               </View>
             ))
           )}
-
-          {/* Formulario reseña */}
-          <View style={styles.addReviewContainer}>
-            <TextComponent text="Agregar reseña" fontWeight="bold" textSize={18} textColor="#1E293B" />
-            <View style={{ flexDirection: "row", marginVertical: 6 }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setCalificacion(star)}>
-                  <TextComponent text={star <= calificacion ? "★" : "☆"} textColor={star <= calificacion ? "#FFD700" : "#D3D3D3"} textSize={24} />
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput style={styles.input} placeholder="Escribe tu comentario..." multiline value={comentario} onChangeText={setComentario} />
-            <TouchableOpacity style={styles.publishButton} onPress={publicarReseña} disabled={submitting}>
-              <TextComponent text={submitting ? "Publicando..." : "Publicar"} fontWeight="bold" textColor="#fff" />
-            </TouchableOpacity>
-          </View>
+          
+          <View style={{height: 50}} />
         </ScrollView>
       ) : (
         <TextComponent text="No se encontró el objeto." textColor="red" textSize={16} />
@@ -403,7 +377,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  // estilo aplicado cuando NO se puede alquilar
   alquilarButtonDisabled: {
     backgroundColor: "#9CA3AF",
     opacity: 0.9,
@@ -411,13 +384,17 @@ const styles = StyleSheet.create({
   mapContainer: {
     marginTop: 20,
     borderRadius: 10,
+    marginBottom: 10,
+  },
+  mapBox: {
+    width: "100%",
+    height: 250,
+    marginTop: 10,
+    borderRadius: 12,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#d1d5db",
-  },
-  map: {
-    width: "100%",
-    height: 200,
+    backgroundColor: "#e5e7eb",
   },
   reviewCard: {
     flexDirection: "row",
@@ -435,28 +412,5 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 10,
-  },
-  addReviewContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 15,
-    marginTop: 20,
-    marginBottom: 30,
-    elevation: 2,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 8,
-    marginVertical: 8,
-    minHeight: 60,
-    textAlignVertical: "top",
-  },
-  publishButton: {
-    backgroundColor: "#1E90FF",
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: "center",
   },
 });
