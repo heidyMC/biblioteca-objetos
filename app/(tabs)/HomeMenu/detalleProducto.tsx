@@ -64,6 +64,9 @@ const DetalleProducto = () => {
   const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([]);
   const [reseñas, setReseñas] = useState<Resenia[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 1. NUEVO ESTADO: Controlar si mostramos todas las reseñas o solo 3
+  const [mostrarTodasResenas, setMostrarTodasResenas] = useState(false);
 
   const router = useRouter();
   const searchParams = useLocalSearchParams();
@@ -173,6 +176,9 @@ const DetalleProducto = () => {
 
   const canRent = !!objeto && objeto.disponible === true;
 
+  // 2. LÓGICA: Cortar el array si no está expandido
+  const resenasVisibles = mostrarTodasResenas ? reseñas : reseñas.slice(0, 3);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -195,7 +201,7 @@ const DetalleProducto = () => {
       {loading ? (
         <ActivityIndicator size="large" color="#1E90FF" style={{ marginTop: 40 }} />
       ) : objeto ? (
-        <ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false}>
           {/* Datos del objeto */}
           <Image source={{ uri: objeto.imagen_url || "https://placehold.co/300x200" }} style={styles.objetoImage} />
 
@@ -227,7 +233,7 @@ const DetalleProducto = () => {
             </View>
           )}
 
-          {/* Mapa con Leaflet (OpenStreetMap) */}
+          {/* Mapa con Leaflet */}
           {objeto.latitud && objeto.longitud && (
             <View style={styles.mapContainer}>
               <TextComponent text="📍 Ubicación del Producto" fontWeight="bold" textSize={18} textColor="#1E293B" />
@@ -239,8 +245,8 @@ const DetalleProducto = () => {
                     <html>
                     <head>
                       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-                      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+                      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
                       <style>
                         body { margin: 0; padding: 0; }
                         #map { height: 100vh; width: 100vw; }
@@ -277,28 +283,44 @@ const DetalleProducto = () => {
             }}
             activeOpacity={canRent ? 0.8 : 1}
             disabled={!canRent}
-            accessibilityState={{ disabled: !canRent }}
-            accessibilityLabel={canRent ? "Alquilar objeto" : "Objeto no disponible"}
           >
             <TextComponent text={canRent ? "🔑 Alquilar" : "⛔ No disponible"} fontWeight="bold" textSize={18} textColor="#fff" />
           </TouchableOpacity>
 
-          {/* Listado de Reseñas (Sin formulario de agregar) */}
+          {/* Listado de Reseñas */}
           <TextComponent text="★ Reseñas" fontWeight="bold" textSize={20} textColor="#1E293B" style={{ marginTop: 20 }} />
           {reseñas.length === 0 ? (
             <TextComponent text="Aún no hay reseñas." textSize={14} textColor="#6B7280" />
           ) : (
-            reseñas.map((r) => (
-              <View key={r.id} style={styles.reviewCard}>
-                <Image source={{ uri: r.usuarios?.foto_url || "https://placehold.co/60x60" }} style={styles.reviewerPhoto} />
-                <View style={{ flex: 1 }}>
-                  <TextComponent text={r.usuarios?.nombre || "Usuario"} fontWeight="bold" textSize={15} />
-                  {renderStars(r.calificacion)}
-                  <TextComponent text={r.comentario} textSize={14} textColor="#333" />
-                  <TextComponent text={new Date(r.created_at).toLocaleDateString()} textSize={12} textColor="#777" />
+            <>
+              {/* 3. Renderizar solo las visibles */}
+              {resenasVisibles.map((r) => (
+                <View key={r.id} style={styles.reviewCard}>
+                  <Image source={{ uri: r.usuarios?.foto_url || "https://placehold.co/60x60" }} style={styles.reviewerPhoto} />
+                  <View style={{ flex: 1 }}>
+                    <TextComponent text={r.usuarios?.nombre || "Usuario"} fontWeight="bold" textSize={15} />
+                    {renderStars(r.calificacion)}
+                    <TextComponent text={r.comentario} textSize={14} textColor="#333" />
+                    <TextComponent text={new Date(r.created_at).toLocaleDateString()} textSize={12} textColor="#777" />
+                  </View>
                 </View>
-              </View>
-            ))
+              ))}
+
+              {/* 4. Botón Ver Más (Solo si hay más de 3 reseñas) */}
+              {reseñas.length > 3 && (
+                <TouchableOpacity 
+                  style={styles.viewMoreButton} 
+                  onPress={() => setMostrarTodasResenas(!mostrarTodasResenas)}
+                >
+                  <TextComponent 
+                    text={mostrarTodasResenas ? "Ver menos" : `Ver más (${reseñas.length - 3} más)`} 
+                    textColor="#1E90FF" 
+                    fontWeight="bold" 
+                    textSize={14}
+                  />
+                </TouchableOpacity>
+              )}
+            </>
           )}
           
           <View style={{height: 50}} />
@@ -413,4 +435,10 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 10,
   },
+  // Estilo para el botón "Ver más"
+  viewMoreButton: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 5,
+  }
 });
