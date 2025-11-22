@@ -2,21 +2,17 @@
 
 import TextComponent from "@/components/ui/text-component";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-// Cambiamos MapView por WebView
-import { useFocusEffect } from "@react-navigation/native";
-import React from "react";
 import { WebView } from "react-native-webview";
 import { supabase } from "../../../lib/supabase";
 
@@ -68,9 +64,6 @@ const DetalleProducto = () => {
   const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([]);
   const [reseñas, setReseñas] = useState<Resenia[]>([]);
   const [loading, setLoading] = useState(true);
-  const [comentario, setComentario] = useState("");
-  const [calificacion, setCalificacion] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
 
   const router = useRouter();
   const searchParams = useLocalSearchParams();
@@ -162,34 +155,6 @@ const DetalleProducto = () => {
 
     fetchData();
   }, [productoId]);
-
-  const publicarReseña = async () => {
-    if (!usuario || !objeto) return;
-    if (!comentario.trim() || calificacion === 0) {
-      Alert.alert("Error", "Por favor, completa la reseña y selecciona una calificación.");
-      return;
-    }
-
-    setSubmitting(true);
-
-    const { error } = await supabase.from("resenia").insert({
-      id_usuario: usuario.id,
-      id_objeto: objeto.id,
-      comentario,
-      calificacion,
-    });
-
-    if (error) {
-      Alert.alert("Error", "No se pudo guardar la reseña.");
-      console.error(error.message);
-    } else {
-      setComentario("");
-      setCalificacion(0);
-      await fetchReseñas();
-    }
-
-    setSubmitting(false);
-  };
 
   const renderStars = (count: number) => {
     const stars = [];
@@ -295,7 +260,7 @@ const DetalleProducto = () => {
                     </html>
                   `}}
                   style={{ flex: 1 }}
-                  scrollEnabled={false} // Deshabilita scroll del WebView para evitar conflictos
+                  scrollEnabled={false}
                 />
               </View>
             </View>
@@ -318,7 +283,7 @@ const DetalleProducto = () => {
             <TextComponent text={canRent ? "🔑 Alquilar" : "⛔ No disponible"} fontWeight="bold" textSize={18} textColor="#fff" />
           </TouchableOpacity>
 
-          {/* Reseñas */}
+          {/* Listado de Reseñas (Sin formulario de agregar) */}
           <TextComponent text="★ Reseñas" fontWeight="bold" textSize={20} textColor="#1E293B" style={{ marginTop: 20 }} />
           {reseñas.length === 0 ? (
             <TextComponent text="Aún no hay reseñas." textSize={14} textColor="#6B7280" />
@@ -335,22 +300,8 @@ const DetalleProducto = () => {
               </View>
             ))
           )}
-
-          {/* Formulario reseña */}
-          <View style={styles.addReviewContainer}>
-            <TextComponent text="Agregar reseña" fontWeight="bold" textSize={18} textColor="#1E293B" />
-            <View style={{ flexDirection: "row", marginVertical: 6 }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setCalificacion(star)}>
-                  <TextComponent text={star <= calificacion ? "★" : "☆"} textColor={star <= calificacion ? "#FFD700" : "#D3D3D3"} textSize={24} />
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput style={styles.input} placeholder="Escribe tu comentario..." multiline value={comentario} onChangeText={setComentario} />
-            <TouchableOpacity style={styles.publishButton} onPress={publicarReseña} disabled={submitting}>
-              <TextComponent text={submitting ? "Publicando..." : "Publicar"} fontWeight="bold" textColor="#fff" />
-            </TouchableOpacity>
-          </View>
+          
+          <View style={{height: 50}} />
         </ScrollView>
       ) : (
         <TextComponent text="No se encontró el objeto." textColor="red" textSize={16} />
@@ -435,16 +386,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
   },
-  // Contenedor específico para el WebView
   mapBox: {
     width: "100%",
-    height: 250, // Altura fija necesaria para el WebView
+    height: 250,
     marginTop: 10,
     borderRadius: 12,
-    overflow: "hidden", // Importante para bordes redondeados en WebView
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: "#d1d5db",
-    backgroundColor: "#e5e7eb", // Fondo mientras carga
+    backgroundColor: "#e5e7eb",
   },
   reviewCard: {
     flexDirection: "row",
@@ -462,28 +412,5 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     marginRight: 10,
-  },
-  addReviewContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 15,
-    marginTop: 20,
-    marginBottom: 30,
-    elevation: 2,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 8,
-    marginVertical: 8,
-    minHeight: 60,
-    textAlignVertical: "top",
-  },
-  publishButton: {
-    backgroundColor: "#1E90FF",
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: "center",
   },
 });
