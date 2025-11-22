@@ -1,4 +1,4 @@
-import AdminNotificationListener from '@/components/AdminNotificationListener'; // <--- IMPORTANTE
+import AdminNotificationListener from '@/components/AdminNotificationListener';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
@@ -19,12 +19,19 @@ export default function TabLayout() {
           headerShown: false,
           tabBarButton: HapticTab,
         }}>
-        {/* ... tus tabs igual que antes ... */}
         <Tabs.Screen
           name="HomeMenu/mainScreen"
           options={{
             title: 'Inicio',
             tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          }}
+        />
+        {/* NUEVA PESTAÑA DE PEDIDOS */}
+        <Tabs.Screen
+          name="pedidos"
+          options={{
+            title: 'Mis Pedidos',
+            tabBarIcon: ({ color, size }) => <Ionicons name="basket" size={size} color={color} />,
           }}
         />
         <Tabs.Screen
@@ -35,13 +42,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="Perfil/PerfilUsuario"
-          options={{
-            title: 'Perfil',
-            tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
-          }}
-        />
-        <Tabs.Screen
           name="ranking"
           options={{
             title: 'Ranking',
@@ -49,13 +49,15 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="HomeMenu/detalleProducto"
-          options={{ href: null }}
+          name="Perfil/PerfilUsuario"
+          options={{
+            title: 'Perfil',
+            tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+          }}
         />
-        <Tabs.Screen
-          name="rental-screen"
-          options={{ href: null }}
-        />
+        {/* Rutas ocultas */}
+        <Tabs.Screen name="HomeMenu/detalleProducto" options={{ href: null }} />
+        <Tabs.Screen name="rental-screen" options={{ href: null }} />
       </Tabs>
     </>
   );
