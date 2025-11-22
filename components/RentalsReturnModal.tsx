@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
+import SuccessModal from "./SuccessModal"; // Importamos el nuevo modal
 
 interface RentalsReturnModalProps {
   visible: boolean;
@@ -18,6 +19,11 @@ export default function RentalsReturnModal({ visible, onClose, userId, onSuccess
   // Estado para el input del código
   const [selectedRentalId, setSelectedRentalId] = useState<string | null>(null);
   const [inputCode, setInputCode] = useState("");
+
+  // Estado para el modal de éxito
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [successPoints, setSuccessPoints] = useState(0);
 
   useEffect(() => {
     if (visible && userId) {
@@ -55,7 +61,6 @@ export default function RentalsReturnModal({ visible, onClose, userId, onSuccess
     }
   };
 
-  // Generar código de 6 caracteres
   const generateCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
@@ -80,7 +85,7 @@ export default function RentalsReturnModal({ visible, onClose, userId, onSuccess
         "Por favor, acércate al administrador y pídele que te dicte el código de devolución."
       );
       
-      fetchActiveRentals(); // Recargar para ver el cambio de estado
+      fetchActiveRentals(); 
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
@@ -119,10 +124,8 @@ export default function RentalsReturnModal({ visible, onClose, userId, onSuccess
       if (objError) throw objError;
 
       // 3. Lógica de recompensa (Tokens)
-      // Calculamos si está a tiempo comparando fechas
       const fechaFin = new Date(alquiler.fecha_fin);
       const hoy = new Date();
-      // Resetear horas para comparar solo fechas
       fechaFin.setHours(0,0,0,0);
       hoy.setHours(0,0,0,0);
 
@@ -143,20 +146,29 @@ export default function RentalsReturnModal({ visible, onClose, userId, onSuccess
             .update({ tokens_disponibles: (userData.tokens_disponibles || 0) + reward })
             .eq('id', userId);
             
-            Alert.alert("¡Excelente!", `Devolución a tiempo. +${reward} tokens ganados.`);
+            // Configurar éxito con recompensa
+            setSuccessPoints(reward);
+            setSuccessMessage("Devolución a tiempo. ¡Excelente trabajo!");
+            setShowSuccess(true);
         }
       } else {
-        Alert.alert("Devolución Completada", "Objeto devuelto correctamente (con retraso).");
+        // Configurar éxito sin recompensa
+        setSuccessPoints(0);
+        setSuccessMessage("Objeto devuelto correctamente (con retraso).");
+        setShowSuccess(true);
       }
-
-      onSuccess(); // Actualizar pantalla padre
-      onClose();   // Cerrar modal
 
     } catch (error: any) {
       Alert.alert("Error", error.message);
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
+    onSuccess(); // Actualizar pantalla padre
+    onClose();   // Cerrar modal
   };
 
   const renderItem = (item: any) => {
@@ -245,6 +257,17 @@ export default function RentalsReturnModal({ visible, onClose, userId, onSuccess
           )}
         </View>
       </View>
+
+      {/* Modal de Éxito Superpuesto */}
+      {showSuccess && (
+        <SuccessModal 
+          visible={showSuccess}
+          title={successPoints > 0 ? "¡Devolución Exitosa!" : "Devolución Completada"}
+          message={successMessage}
+          points={successPoints > 0 ? successPoints : undefined}
+          onClose={handleCloseSuccess}
+        />
+      )}
     </Modal>
   );
 }
