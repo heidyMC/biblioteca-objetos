@@ -4,16 +4,16 @@ import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
@@ -366,14 +366,13 @@ export default function CompraTokensScreen() {
             <View>
               <Text style={styles.sectionTitle}>Confirmar Transacción</Text>
               <Text style={styles.sectionSubtitle}>
-                Proporciona al menos uno de los siguientes datos para verificar
-                tu pago
+                Proporciona los siguientes datos para verificar tu pago
               </Text>
 
               {/* Transaction ID Input */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>
-                  ID de Transacción (Opcional)
+                  ID de Transacción
                 </Text>
                 <TextInput
                   style={styles.textInput}
@@ -388,7 +387,7 @@ export default function CompraTokensScreen() {
               {/* Receipt Upload */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>
-                  Comprobante de Pago (Opcional)
+                  Comprobante de Pago
                 </Text>
                 <TouchableOpacity
                   style={[
