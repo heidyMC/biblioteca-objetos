@@ -26,6 +26,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [referralCode, setReferralCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState(0) // 0-4: vacío, débil, normal, fuerte, perfecta
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -47,6 +48,58 @@ export default function RegisterScreen() {
   const validatePassword = (pwd: string): boolean => {
     if (pwd.length < 6) return false
     return /\d/.test(pwd) // Verifica que tenga al menos un número
+  }
+
+  const calculatePasswordStrength = (pwd: string): number => {
+    if (pwd.length === 0) return 0
+    if (pwd.length < 6) return 1 // Mínimo pero débil
+
+    let strength = 1 // Comienza en 1 (mínimo)
+
+    // +1 si tiene letras mayúsculas
+    if (/[A-Z]/.test(pwd)) strength++
+
+    // +1 si tiene números
+    if (/\d/.test(pwd)) strength++
+
+    // +1 si tiene caracteres especiales
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(pwd)) strength++
+
+    return Math.min(strength, 4) // Máximo 4
+  }
+
+  const getStrengthLabel = (strength: number): string => {
+    switch (strength) {
+      case 0:
+        return ""
+      case 1:
+        return "Débil"
+      case 2:
+        return "Normal"
+      case 3:
+        return "Fuerte"
+      case 4:
+        return "Perfecta"
+      default:
+        return ""
+    }
+  }
+
+  const getStrengthColor = (strength: number): string => {
+    switch (strength) {
+      case 0:
+        return "#E5E5E5"
+      case 1:
+        return "#EF4444" // Rojo - débil
+      case 2:
+        return "#F59E0B" // Amarillo - normal
+      case 3:
+        return "#3B82F6" // Azul - fuerte
+      case 4:
+        return "#10B981" // Verde - perfecta
+      default:
+        return "#E5E5E5"
+    }
   }
 
   const handleNameChange = (text: string) => {
@@ -86,12 +139,13 @@ export default function RegisterScreen() {
 
   const handlePasswordChange = (text: string) => {
     setPassword(text)
+    const strength = calculatePasswordStrength(text)
+    setPasswordStrength(strength)
+
     if (text.length === 0) {
       setErrors((prev) => ({ ...prev, password: "La contraseña es requerida" }))
     } else if (text.length < 6) {
       setErrors((prev) => ({ ...prev, password: "Mínimo 6 caracteres" }))
-    } else if (!/\d/.test(text)) {
-      setErrors((prev) => ({ ...prev, password: "Debe incluir al menos un número" }))
     } else {
       setErrors((prev) => ({ ...prev, password: "" }))
     }
@@ -343,6 +397,33 @@ export default function RegisterScreen() {
                     <Ionicons name={showPassword ? "eye" : "eye-off"} size={20} color="#737373" />
                   </TouchableOpacity>
                 </View>
+
+                {password.length > 0 && (
+                  <>
+                    <View style={styles.strengthBarContainer}>
+                      <View
+                        style={[
+                          styles.strengthBar,
+                          {
+                            width: `${(passwordStrength / 4) * 100}%`,
+                            backgroundColor: getStrengthColor(passwordStrength),
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.strengthLabelContainer}>
+                      <Text style={[styles.strengthLabel, { color: getStrengthColor(passwordStrength) }]}>
+                        {getStrengthLabel(passwordStrength)}
+                      </Text>
+                      <Text style={styles.strengthHint}>
+                        {passwordStrength < 4
+                          ? "Añade mayúsculas, números y caracteres especiales"
+                          : "Contraseña segura"}
+                      </Text>
+                    </View>
+                  </>
+                )}
+
                 {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
               </View>
 
@@ -551,4 +632,27 @@ const styles = StyleSheet.create({
   referralLabelContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
   optionalText: { fontSize: 12, color: "#737373", fontStyle: "italic" },
   referralDescription: { fontSize: 12, color: "#737373", fontStyle: "italic" },
+  strengthBarContainer: {
+    height: 6,
+    backgroundColor: "#E5E5E5",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginVertical: 8,
+  },
+  strengthBar: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  strengthLabelContainer: {
+    gap: 4,
+  },
+  strengthLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  strengthHint: {
+    fontSize: 12,
+    color: "#737373",
+    fontStyle: "italic",
+  },
 })
