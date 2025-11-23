@@ -96,10 +96,10 @@ export default function CompraTokensScreen() {
   };
 
   const validateForm = () => {
-    if (!transactionId.trim() && !receiptImage) {
+    if (!transactionId.trim() || !receiptImage) {
       Alert.alert(
         "Datos requeridos",
-        "Por favor ingresa al menos el ID de transacción o sube una imagen del comprobante."
+        "Por favor ingresa el ID de transacción y sube una imagen del comprobante."
       );
       return false;
     }
