@@ -1,12 +1,8 @@
-"use client";
+"use client"
 
-import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { makeRedirectUri } from "expo-auth-session";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
-import { useRouter } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons"
+import { useRouter } from "expo-router"
+import { useState } from "react"
 import {
   Alert,
   Image,
@@ -18,75 +14,150 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "../../lib/supabase";
-
-WebBrowser.maybeCompleteAuthSession();
+} from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { supabase } from "../../lib/supabase"
 
 export default function RegisterScreen() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [referralCode, setReferralCode] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [referralCode, setReferralCode] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  const limpiarCache = async () => {
-    try {
-      await AsyncStorage.clear();
-    } catch (error) {
-      console.error("Error al limpiar el caché:", error);
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  })
+
+  const router = useRouter()
+
+  const validateEmail = (emailValue: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(emailValue)
+  }
+
+  const validatePassword = (pwd: string): boolean => {
+    if (pwd.length < 6) return false
+    return /\d/.test(pwd) // Verifica que tenga al menos un número
+  }
+
+  const handleNameChange = (text: string) => {
+    if (text.length <= 60) {
+      setName(text)
+      if (text.trim().length === 0) {
+        setErrors((prev) => ({ ...prev, name: "El nombre es requerido" }))
+      } else if (text.trim().length < 2) {
+        setErrors((prev) => ({ ...prev, name: "El nombre debe tener al menos 2 caracteres" }))
+      } else {
+        setErrors((prev) => ({ ...prev, name: "" }))
+      }
     }
-  };
+  }
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text)
+    if (text.trim().length === 0) {
+      setErrors((prev) => ({ ...prev, email: "El email es requerido" }))
+    } else if (!validateEmail(text)) {
+      setErrors((prev) => ({ ...prev, email: "Ingresa un email válido" }))
+    } else {
+      setErrors((prev) => ({ ...prev, email: "" }))
+    }
+  }
+
+  const handlePhoneChange = (text: string) => {
+    setPhone(text)
+    if (text.trim().length === 0) {
+      setErrors((prev) => ({ ...prev, phone: "El teléfono es requerido" }))
+    } else if (!/^\d{7,}$/.test(text)) {
+      setErrors((prev) => ({ ...prev, phone: "Teléfono debe tener al menos 7 dígitos" }))
+    } else {
+      setErrors((prev) => ({ ...prev, phone: "" }))
+    }
+  }
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text)
+    if (text.length === 0) {
+      setErrors((prev) => ({ ...prev, password: "La contraseña es requerida" }))
+    } else if (text.length < 6) {
+      setErrors((prev) => ({ ...prev, password: "Mínimo 6 caracteres" }))
+    } else if (!/\d/.test(text)) {
+      setErrors((prev) => ({ ...prev, password: "Debe incluir al menos un número" }))
+    } else {
+      setErrors((prev) => ({ ...prev, password: "" }))
+    }
+
+    if (confirmPassword && text !== confirmPassword) {
+      setErrors((prev) => ({ ...prev, confirmPassword: "Las contraseñas no coinciden" }))
+    } else if (confirmPassword && text === confirmPassword) {
+      setErrors((prev) => ({ ...prev, confirmPassword: "" }))
+    }
+  }
+
+  const handleConfirmPasswordChange = (text: string) => {
+    setConfirmPassword(text)
+    if (text.length === 0) {
+      setErrors((prev) => ({ ...prev, confirmPassword: "Debe confirmar la contraseña" }))
+    } else if (text !== password) {
+      setErrors((prev) => ({ ...prev, confirmPassword: "Las contraseñas no coinciden" }))
+    } else {
+      setErrors((prev) => ({ ...prev, confirmPassword: "" }))
+    }
+  }
 
   const handleRegister = async () => {
     if (!name || !email || !phone || !password || !confirmPassword) {
-      Alert.alert("Campos incompletos", "Por favor completa todos los campos obligatorios.");
-      return;
+      Alert.alert("Campos incompletos", "Por favor completa todos los campos obligatorios.")
+      return
+    }
+
+    if (Object.values(errors).some((err) => err !== "")) {
+      Alert.alert("Errores en el formulario", "Por favor corrige los errores antes de continuar.")
+      return
     }
 
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Las contraseñas no coinciden.");
-      return;
+      Alert.alert("Error", "Las contraseñas no coinciden.")
+      return
     }
 
-    if (password.length < 6) {
-      Alert.alert("Contraseña débil", "La contraseña debe tener al menos 6 caracteres.");
-      return;
-    }
-
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
-      const { data: existingUser } = await supabase
-        .from("usuarios")
-        .select("id")
-        .eq("correo", email)
-        .single();
+      const { data: existingUser } = await supabase.from("usuarios").select("id").eq("correo", email).single()
 
       if (existingUser) {
-        Alert.alert("Error", "Este correo electrónico ya está registrado.");
-        setIsLoading(false);
-        return;
+        Alert.alert("Error", "Este correo electrónico ya está registrado.")
+        setIsLoading(false)
+        return
       }
 
-      let referrerId = null;
+      let referrerId = null
       if (referralCode.trim()) {
         const { data: referrerData } = await supabase
           .from("usuarios")
           .select("id, tokens_disponibles")
           .eq("referal_code", referralCode.trim().toUpperCase())
-          .single();
+          .single()
 
         if (!referrerData) {
-          Alert.alert("Código de referido inválido", "El código de referido no existe. Puedes dejarlo vacío si no tienes uno.");
-          setIsLoading(false);
-          return;
+          Alert.alert(
+            "Código de referido inválido",
+            "El código de referido no existe. Puedes dejarlo vacío si no tienes uno.",
+          )
+          setIsLoading(false)
+          return
         }
-        referrerId = referrerData.id;
+        referrerId = referrerData.id
       }
 
       const { data: newUser, error: insertError } = await supabase
@@ -101,31 +172,29 @@ export default function RegisterScreen() {
           },
         ])
         .select()
-        .single();
+        .single()
 
       if (insertError) {
-        throw new Error(insertError.message);
+        throw new Error(insertError.message)
       }
 
       if (referrerId) {
-        const { error: referralError } = await supabase
-          .from("referidos")
-          .insert([
-            {
-              id_referente: referrerId,
-              id_referido: newUser.id,
-            },
-          ]);
+        const { error: referralError } = await supabase.from("referidos").insert([
+          {
+            id_referente: referrerId,
+            id_referido: newUser.id,
+          },
+        ])
 
         if (referralError) {
-          console.error("Error creando relación de referido:", referralError);
+          console.error("Error creando relación de referido:", referralError)
         }
 
         const { data: referrerCurrent } = await supabase
           .from("usuarios")
           .select("tokens_disponibles")
           .eq("id", referrerId)
-          .single();
+          .single()
 
         if (referrerCurrent) {
           await supabase
@@ -133,7 +202,7 @@ export default function RegisterScreen() {
             .update({
               tokens_disponibles: referrerCurrent.tokens_disponibles + 25,
             })
-            .eq("id", referrerId);
+            .eq("id", referrerId)
         }
 
         await supabase
@@ -141,7 +210,7 @@ export default function RegisterScreen() {
           .update({
             tokens_disponibles: 160,
           })
-          .eq("id", newUser.id);
+          .eq("id", newUser.id)
       }
 
       Alert.alert(
@@ -153,128 +222,57 @@ export default function RegisterScreen() {
           {
             text: "OK",
             onPress: () => {
-              router.replace("/(tabs)/HomeMenu/mainScreen");
+              router.replace("/(tabs)/HomeMenu/mainScreen")
             },
           },
-        ]
-      );
+        ],
+      )
 
-      setName("");
-      setEmail("");
-      setPhone("");
-      setPassword("");
-      setConfirmPassword("");
-      setReferralCode("");
+      setName("")
+      setEmail("")
+      setPhone("")
+      setPassword("")
+      setConfirmPassword("")
+      setReferralCode("")
+      setErrors({ name: "", email: "", phone: "", password: "", confirmPassword: "" })
     } catch (error: any) {
-      Alert.alert("Error al registrar", error.message || "Ocurrió un error inesperado. Por favor intenta nuevamente.");
+      Alert.alert("Error al registrar", error.message || "Ocurrió un error inesperado. Por favor intenta nuevamente.")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleGoogleRegister = async () => {
-    setIsLoading(true);
     try {
-      // 1. URL de redirección dinámica (Funciona en APK y Expo Go)
-      const redirectTo = makeRedirectUri({
-        scheme: 'prestafacil',
-        path: 'google-auth'
-      });
+      setIsLoading(true)
 
-      // 2. Iniciar flujo
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo,
-          skipBrowserRedirect: true,
+          redirectTo: "exp://localhost:19000",
         },
-      });
+      })
 
-      if (error) throw error;
+      if (error) throw error
 
-      // 3. Abrir navegador
-      if (data?.url) {
-        const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-
-        if (res.type === "success") {
-          const { url } = res;
-          
-          // 4. Parsear tokens (CORREGIDO EL ERROR DE TYPESCRIPT AQUI)
-          const { params } = QueryParams.getQueryParams(url);
-          const { access_token, refresh_token } = params;
-
-          if (access_token && refresh_token) {
-            // 5. Crear sesión en Supabase
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
-
-            if (sessionError) throw sessionError;
-
-            const user = sessionData.user;
-            if (!user) throw new Error("No se pudo obtener información del usuario.");
-
-            // 6. Verificar/Crear usuario en base de datos personalizada
-            const { data: existing } = await supabase
-              .from("usuarios")
-              .select("*")
-              .eq("correo", user.email)
-              .maybeSingle();
-
-            let usuarioFinal = existing;
-
-            if (!existing) {
-              // Si es nuevo, lo insertamos con bono de bienvenida
-              const { data: newUser, error: insertError } = await supabase
-                .from("usuarios")
-                .insert([
-                  {
-                    nombre: user.user_metadata.full_name || "Usuario Google",
-                    correo: user.email,
-                    foto_url: user.user_metadata.avatar_url,
-                    tokens_disponibles: 150, // Bono base
-                  },
-                ])
-                .select()
-                .single();
-
-              if (insertError) throw insertError;
-              usuarioFinal = newUser;
-            }
-
-            // 7. Guardar en AsyncStorage (CORRIGE EL BUG DE "NO ESTAS LOGUEADO")
-            await limpiarCache();
-            await AsyncStorage.setItem("usuario", JSON.stringify(usuarioFinal));
-
-            Alert.alert("¡Bienvenido!", "Has iniciado sesión con Google correctamente.");
-            router.replace("/(tabs)/HomeMenu/mainScreen");
-          }
-        }
-      }
+      Alert.alert("¡Bienvenido!", "Has iniciado sesión con Google correctamente.")
+      router.replace("/(tabs)/HomeMenu/mainScreen")
     } catch (error: any) {
-      console.error("Error Google Register:", error);
-      Alert.alert("Error con Google", error.message);
+      Alert.alert("Error con Google", error.message)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image 
+              <Image
                 source={require("../../assets/images/prestafacil-icon.jpg")}
-                style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                style={{ width: "100%", height: "100%", borderRadius: 20 }}
                 resizeMode="cover"
               />
             </View>
@@ -288,64 +286,82 @@ export default function RegisterScreen() {
 
             <View style={styles.form}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Nombre completo *</Text>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.label}>Nombre completo *</Text>
+                  <Text style={styles.charCount}>{name.length}/60</Text>
+                </View>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.name ? styles.inputError : null]}
                   placeholder="Tu nombre"
                   value={name}
-                  onChangeText={setName}
+                  onChangeText={handleNameChange}
                   autoCapitalize="words"
                   editable={!isLoading}
                 />
+                {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Correo electrónico *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.email ? styles.inputError : null]}
                   placeholder="tu@email.com"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={handleEmailChange}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   editable={!isLoading}
                 />
+                {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Teléfono *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.phone ? styles.inputError : null]}
                   placeholder="Ej. 77777777"
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={handlePhoneChange}
                   keyboardType="phone-pad"
                   editable={!isLoading}
                 />
+                {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Contraseña *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  editable={!isLoading}
-                />
+                <View style={[styles.passwordContainer, errors.password ? styles.inputError : null]}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="••••••••"
+                    value={password}
+                    onChangeText={handlePasswordChange}
+                    secureTextEntry={!showPassword}
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                    <Ionicons name={showPassword ? "eye" : "eye-off"} size={20} color="#737373" />
+                  </TouchableOpacity>
+                </View>
+                {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Confirmar contraseña *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  editable={!isLoading}
-                />
+                <View style={[styles.passwordContainer, errors.confirmPassword ? styles.inputError : null]}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChangeText={handleConfirmPasswordChange}
+                    secureTextEntry={!showConfirmPassword}
+                    editable={!isLoading}
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
+                    <Ionicons name={showConfirmPassword ? "eye" : "eye-off"} size={20} color="#737373" />
+                  </TouchableOpacity>
+                </View>
+                {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
               </View>
 
               <View style={styles.inputGroup}>
@@ -362,7 +378,9 @@ export default function RegisterScreen() {
                   editable={!isLoading}
                   maxLength={6}
                 />
-                <Text style={styles.referralDescription}>Si usas un código de referido, recibirás 10 tokens adicionales</Text>
+                <Text style={styles.referralDescription}>
+                  Si usas un código de referido, recibirás 10 tokens adicionales
+                </Text>
               </View>
 
               <TouchableOpacity
@@ -388,10 +406,7 @@ export default function RegisterScreen() {
                 <Text style={styles.googleButtonText}>Continuar con Google</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.linkContainer}
-                onPress={() => router.push("/(auth)/login")}
-              >
+              <TouchableOpacity style={styles.linkContainer} onPress={() => router.push("/(auth)/login")}>
                 <Text style={styles.linkText}>
                   ¿Ya tienes una cuenta? <Text style={styles.linkTextBold}>Inicia sesión aquí</Text>
                 </Text>
@@ -409,7 +424,7 @@ export default function RegisterScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -425,7 +440,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
-    overflow: "hidden", 
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -448,7 +463,13 @@ const styles = StyleSheet.create({
   cardDescription: { fontSize: 14, color: "#737373", marginBottom: 24 },
   form: { gap: 16 },
   inputGroup: { gap: 8 },
+  labelContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   label: { fontSize: 14, fontWeight: "500", color: "#0A0A0A" },
+  charCount: { fontSize: 12, color: "#A3A3A3" },
   input: {
     height: 48,
     borderWidth: 1,
@@ -458,6 +479,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: "#FFFFFF",
     color: "#0A0A0A",
+  },
+  inputError: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+  },
+  errorText: {
+    fontSize: 12,
+    color: "#EF4444",
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  passwordContainer: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    backgroundColor: "#FFFFFF",
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#0A0A0A",
+  },
+  eyeIcon: {
+    padding: 8,
   },
   button: {
     height: 48,
@@ -502,4 +551,4 @@ const styles = StyleSheet.create({
   referralLabelContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
   optionalText: { fontSize: 12, color: "#737373", fontStyle: "italic" },
   referralDescription: { fontSize: 12, color: "#737373", fontStyle: "italic" },
-});
+})
