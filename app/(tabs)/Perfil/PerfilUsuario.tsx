@@ -6,6 +6,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useState } from "react"
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+// IMPORTANTE: Importar el nuevo componente
+import ModalEditarPerfil from "@/components/ModalEditarPerfil"
 
 interface Usuario {
   is_admin: any
@@ -22,47 +24,51 @@ const Perfil = () => {
   const router = useRouter()
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Estado para controlar el modal
+  const [modalVisible, setModalVisible] = useState(false)
+
+  const cargarUsuario = async () => {
+    try {
+      const data = await AsyncStorage.getItem("usuario")
+      if (data) {
+        const usuarioLocal = JSON.parse(data)
+
+        // Obtener datos frescos desde Supabase
+        const { data: usuarioDb, error } = await supabase
+          .from("usuarios")
+          .select("*")
+          .eq("id", usuarioLocal.id)
+          .single()
+
+        if (error) {
+          console.error("Error obteniendo usuario de Supabase:", error)
+          setUsuario(usuarioLocal) // Usar local si falla la red
+        } else {
+          setUsuario(usuarioDb)
+          // Actualizar caché local
+          await AsyncStorage.setItem("usuario", JSON.stringify(usuarioDb))
+        }
+      } else {
+        setUsuario(null)
+      }
+    } catch (error) {
+      console.error("Error cargando usuario:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
-      const obtenerUsuario = async () => {
-        try {
-          const data = await AsyncStorage.getItem("usuario")
-          if (data) {
-            const usuarioLocal = JSON.parse(data)
-
-            // Obtener datos actualizados desde Supabase
-            const { data: usuarioDb, error } = await supabase
-              .from("usuarios")
-              .select("*")
-              .eq("id", usuarioLocal.id)
-              .single()
-
-            if (error) {
-              console.error("Error obteniendo usuario de Supabase:", error)
-              setUsuario(usuarioLocal)
-            } else {
-              setUsuario(usuarioDb)
-              // Actualizar AsyncStorage con datos frescos
-              await AsyncStorage.setItem("usuario", JSON.stringify(usuarioDb))
-            }
-          } else {
-            setUsuario(null)
-          }
-        } catch (error) {
-          console.error("Error cargando usuario:", error)
-        } finally {
-          setLoading(false)
-        }
-      }
-
-      obtenerUsuario()
+      cargarUsuario()
     }, []),
   )
 
   const handleCerrarSesion = async () => {
     try {
       await AsyncStorage.clear()
+      await supabase.auth.signOut() // También cerrar sesión en Supabase Auth
       setUsuario(null)
       router.replace("/(auth)/login")
     } catch (error) {
@@ -70,45 +76,20 @@ const Perfil = () => {
     }
   }
 
+  // Función actualizada para abrir el modal
   const handleEditarPerfil = () => {
-    console.log("Editar perfil - Próximamente")
+    setModalVisible(true)
   }
 
   // --- FUNCIONES DE NAVEGACIÓN ---
-
-  const handleHistorialAlquileres = () => {
-    // @ts-ignore
-    router.push("/HistorialAlquileresScreen")
-  }
-
-  const handleHistorialCompras = () => {
-    // @ts-ignore
-    router.push("/HistorialComprasScreen")
-  }
-
-  // Solo Admin
-  const handleAdminTransacciones = () => {
-    // @ts-ignore
-    router.push("/AdminTransaccionesScreen")
-  }
-
-  const handleAdminDevoluciones = () => {
-    // @ts-ignore
-    router.push("/AdminDevolucionesScreen")
-  }
-
-  const handleAdminSolicitudes = () => {
-    // @ts-ignore
-    router.push("/AdminSolicitudesScreen")
-  }
-
-  const handleRanking = () => {
-    router.push("/(tabs)/ranking")
-  }
-
-  const irAHome = () => {
-    router.push("/(tabs)/HomeMenu/mainScreen")
-  }
+  // (Se mantienen igual que tu código original)
+  const handleHistorialAlquileres = () => router.push("/HistorialAlquileresScreen" as any)
+  const handleHistorialCompras = () => router.push("/HistorialComprasScreen" as any)
+  const handleAdminTransacciones = () => router.push("/AdminTransaccionesScreen" as any)
+  const handleAdminDevoluciones = () => router.push("/AdminDevolucionesScreen" as any)
+  const handleAdminSolicitudes = () => router.push("/AdminSolicitudesScreen" as any)
+  const handleRanking = () => router.push("/(tabs)/ranking")
+  const irAHome = () => router.push("/(tabs)/HomeMenu/mainScreen")
 
   const formatearFecha = (fecha: string) => {
     const date = new Date(fecha)
@@ -149,7 +130,7 @@ const Perfil = () => {
       <View style={styles.profileSection}>
         <View style={styles.avatarContainer}>
           <Image
-            source={{ uri: usuario.foto_url || "https://randomuser.me/api/portraits/men/44.jpg" }}
+            source={{ uri: usuario.foto_url || "https://placehold.co/150x150/png" }}
             style={styles.avatar}
           />
           <View style={styles.onlineBadge} />
@@ -191,20 +172,17 @@ const Perfil = () => {
             </View>
           </View>
 
-          {usuario.telefono && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconContainer}>
-                  <Ionicons name="call-outline" size={20} color="#6366F1" />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Teléfono</Text>
-                  <Text style={styles.infoValue}>{usuario.telefono}</Text>
-                </View>
-              </View>
-            </>
-          )}
+          {/* Siempre mostramos el campo teléfono, si está vacío se verá vacío */}
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconContainer}>
+              <Ionicons name="call-outline" size={20} color="#6366F1" />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoLabel}>Teléfono</Text>
+              <Text style={styles.infoValue}>{usuario.telefono || "No registrado"}</Text>
+            </View>
+          </View>
 
           <View style={styles.divider} />
 
@@ -223,7 +201,6 @@ const Perfil = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Acciones</Text>
 
-        {/* Historial de Alquileres */}
         <TouchableOpacity style={styles.actionCard} onPress={handleHistorialAlquileres}>
           <View style={styles.actionIconContainer}>
             <Ionicons name="time-outline" size={24} color="#6366F1" />
@@ -235,7 +212,6 @@ const Perfil = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* Historial de Compras */}
          <TouchableOpacity style={styles.actionCard} onPress={handleHistorialCompras}>
           <View style={styles.actionIconContainer}>
             <Ionicons name="card-outline" size={24} color="#6366F1" />
@@ -247,10 +223,8 @@ const Perfil = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* --- SECCIÓN DE ADMINISTRADOR --- */}
         {usuario.is_admin && (
           <>
-            {/* 1. Solicitudes de Alquiler (NUEVO) */}
             <TouchableOpacity style={styles.actionCard} onPress={handleAdminSolicitudes}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="notifications-outline" size={24} color="#8B5CF6" />
@@ -262,7 +236,6 @@ const Perfil = () => {
               <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
             </TouchableOpacity>
 
-            {/* 2. Transacciones */}
             <TouchableOpacity style={styles.actionCard} onPress={handleAdminTransacciones}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
@@ -274,7 +247,6 @@ const Perfil = () => {
               <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
             </TouchableOpacity>
 
-            {/* 3. Devoluciones */}
             <TouchableOpacity style={styles.actionCard} onPress={handleAdminDevoluciones}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="return-up-back-outline" size={24} color="#F59E0B" />
@@ -288,7 +260,6 @@ const Perfil = () => {
           </>
         )}
 
-        {/* Ranking */}
         <TouchableOpacity style={styles.actionCard} onPress={handleRanking}>
           <View style={styles.actionIconContainer}>
             <Ionicons name="trophy-outline" size={24} color="#F59E0B" />
@@ -307,6 +278,17 @@ const Perfil = () => {
       </TouchableOpacity>
 
       <View style={{ height: 40 }} />
+
+      {/* RENDERIZAR EL MODAL AQUÍ */}
+      {usuario && (
+        <ModalEditarPerfil
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          usuario={usuario}
+          onUpdate={cargarUsuario}
+        />
+      )}
+
     </ScrollView>
   )
 }

@@ -1,7 +1,11 @@
 "use client";
 
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
 import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
 import {
   Alert,
@@ -18,6 +22,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,6 +33,14 @@ export default function RegisterScreen() {
   const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  const limpiarCache = async () => {
+    try {
+      await AsyncStorage.clear();
+    } catch (error) {
+      console.error("Error al limpiar el caché:", error);
+    }
+  };
 
   const handleRegister = async () => {
     if (!name || !email || !phone || !password || !confirmPassword) {
@@ -159,21 +173,87 @@ export default function RegisterScreen() {
   };
 
   const handleGoogleRegister = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      // 1. URL de redirección dinámica (Funciona en APK y Expo Go)
+      const redirectTo = makeRedirectUri({
+        scheme: 'prestafacil',
+        path: 'google-auth'
+      });
 
+      // 2. Iniciar flujo
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: "exp://localhost:19000",
+          redirectTo,
+          skipBrowserRedirect: true,
         },
       });
 
       if (error) throw error;
 
-      Alert.alert("¡Bienvenido!", "Has iniciado sesión con Google correctamente.");
-      router.replace("/(tabs)/HomeMenu/mainScreen");
+      // 3. Abrir navegador
+      if (data?.url) {
+        const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+        if (res.type === "success") {
+          const { url } = res;
+          
+          // 4. Parsear tokens (CORREGIDO EL ERROR DE TYPESCRIPT AQUI)
+          const { params } = QueryParams.getQueryParams(url);
+          const { access_token, refresh_token } = params;
+
+          if (access_token && refresh_token) {
+            // 5. Crear sesión en Supabase
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (sessionError) throw sessionError;
+
+            const user = sessionData.user;
+            if (!user) throw new Error("No se pudo obtener información del usuario.");
+
+            // 6. Verificar/Crear usuario en base de datos personalizada
+            const { data: existing } = await supabase
+              .from("usuarios")
+              .select("*")
+              .eq("correo", user.email)
+              .maybeSingle();
+
+            let usuarioFinal = existing;
+
+            if (!existing) {
+              // Si es nuevo, lo insertamos con bono de bienvenida
+              const { data: newUser, error: insertError } = await supabase
+                .from("usuarios")
+                .insert([
+                  {
+                    nombre: user.user_metadata.full_name || "Usuario Google",
+                    correo: user.email,
+                    foto_url: user.user_metadata.avatar_url,
+                    tokens_disponibles: 150, // Bono base
+                  },
+                ])
+                .select()
+                .single();
+
+              if (insertError) throw insertError;
+              usuarioFinal = newUser;
+            }
+
+            // 7. Guardar en AsyncStorage (CORRIGE EL BUG DE "NO ESTAS LOGUEADO")
+            await limpiarCache();
+            await AsyncStorage.setItem("usuario", JSON.stringify(usuarioFinal));
+
+            Alert.alert("¡Bienvenido!", "Has iniciado sesión con Google correctamente.");
+            router.replace("/(tabs)/HomeMenu/mainScreen");
+          }
+        }
+      }
     } catch (error: any) {
+      console.error("Error Google Register:", error);
       Alert.alert("Error con Google", error.message);
     } finally {
       setIsLoading(false);
@@ -192,14 +272,12 @@ export default function RegisterScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              {/* Se actualizó la imagen y el estilo */}
               <Image 
                 source={require("../../assets/images/prestafacil-icon.jpg")}
                 style={{ width: '100%', height: '100%', borderRadius: 20 }}
                 resizeMode="cover"
               />
             </View>
-            {/* Se actualizó el nombre de la app */}
             <Text style={styles.title}>PrestaFacil</Text>
             <Text style={styles.subtitle}>Alquila con tokens</Text>
           </View>
@@ -343,7 +421,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    // Se actualizó el fondo a blanco
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",

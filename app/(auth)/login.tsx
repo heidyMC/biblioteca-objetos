@@ -2,6 +2,8 @@
 
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { makeRedirectUri } from "expo-auth-session"
+import * as QueryParams from "expo-auth-session/build/QueryParams"
 import { useRouter } from "expo-router"
 import * as WebBrowser from "expo-web-browser"
 import React, { useState } from "react"
@@ -72,49 +74,91 @@ export default function LoginScreen() {
   const signInWithGoogle = async () => {
     setIsLoading(true)
     try {
+      // 1. URL de redirección dinámica (APK y Dev)
+      const redirectTo = makeRedirectUri({
+        scheme: 'prestafacil',
+        path: 'google-auth'
+      });
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: "exp://127.0.0.1:19000" },
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
       })
 
       if (error) throw error
 
-      if (data.url) {
-        const res = await WebBrowser.openAuthSessionAsync(data.url)
+      if (data?.url) {
+        const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
 
         if (res.type === "success") {
-          const { data: userData, error: userError } = await supabase.auth.getUser()
-          if (userError) throw userError
+          const { url } = res;
+          
+          // --- CORRECCIÓN DEL ERROR DE TYPESCRIPT ---
+          // getQueryParams devuelve un objeto { params: {...}, errorCode: ... }
+          // Primero extraemos 'params' de ese resultado
+          const { params } = QueryParams.getQueryParams(url);
+          
+          // Ahora sí extraemos los tokens desde 'params'
+          const { access_token, refresh_token } = params;
 
-          const user = userData.user
-          if (!user) return
+          if (access_token && refresh_token) {
+            // Crear sesión en Supabase
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
 
-          const { data: existing } = await supabase
-            .from("usuarios")
-            .select("*")
-            .eq("id", user.id)
-            .maybeSingle()
+            if (sessionError) throw sessionError;
 
-          if (!existing) {
-            await supabase.from("usuarios").insert([
-              {
-                id: user.id,
-                nombre: user.user_metadata.full_name || "Usuario Google",
-                correo: user.email,
-                foto_url: user.user_metadata.avatar_url,
-                tokens_disponibles: 150,
-              },
-            ])
+            const user = sessionData.user;
+            if (!user) throw new Error("No se pudo obtener el usuario");
+
+            // Verificar si existe en nuestra tabla 'usuarios'
+            const { data: existing } = await supabase
+              .from("usuarios")
+              .select("*")
+              .eq("correo", user.email)
+              .maybeSingle();
+
+            let usuarioFinal = existing;
+
+            if (!existing) {
+              // Si es la primera vez que entra con Google, lo creamos
+              const { data: newUser, error: insertError } = await supabase.from("usuarios").insert([
+                {
+                  // Usamos user.email porque id de auth puede variar
+                  nombre: user.user_metadata.full_name || "Usuario Google",
+                  correo: user.email,
+                  foto_url: user.user_metadata.avatar_url,
+                  tokens_disponibles: 150, // Bono bienvenida
+                },
+              ])
+              .select()
+              .single();
+
+              if (insertError) throw insertError;
+              usuarioFinal = newUser;
+            }
+
+            // --- CORRECCIÓN DEL BUG DE NAVEGACIÓN ---
+            // Guardar en AsyncStorage antes de navegar
+            await limpiarCache();
+            await AsyncStorage.setItem("usuario", JSON.stringify(usuarioFinal));
+
+            Alert.alert("Bienvenido", `Has iniciado sesión como ${usuarioFinal.nombre}`)
+            router.replace("/(tabs)/HomeMenu/mainScreen")
           }
-
-          await AsyncStorage.setItem("usuario", JSON.stringify(user))
-          Alert.alert("Bienvenido", `Has iniciado sesión como ${user.email}`)
-          router.replace("/(tabs)/HomeMenu/mainScreen")
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al iniciar sesión con Google:", error)
-      Alert.alert("Error", "No se pudo iniciar sesión con Google.")
+      // Evitar alerta si el usuario canceló
+      if (error.message !== "User cancelled the auth session") {
+          Alert.alert("Error", "No se pudo iniciar sesión con Google.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -129,7 +173,6 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              {/* Se actualizó la imagen y el estilo */}
               <Image 
                 source={require("../../assets/images/prestafacil-icon.jpg")}
                 style={{ width: '100%', height: '100%', borderRadius: 20 }}
@@ -154,6 +197,7 @@ export default function LoginScreen() {
                   value={email}
                   onChangeText={setEmail}
                   editable={!isLoading}
+                  autoCapitalize="none"
                 />
               </View>
 
@@ -235,7 +279,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 20,
-    // Se actualizó el fondo a blanco
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
