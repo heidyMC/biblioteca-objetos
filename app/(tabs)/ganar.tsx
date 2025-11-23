@@ -107,7 +107,7 @@ export default function GanarScreen() {
                         </View>
                         <View style={styles.earnContent}>
                             <Text style={styles.earnTitle}>Dar Reseñas</Text>
-                            <Text style={styles.earnDescription}>Gana tokens dejando reseñas de los objetos que alquilaste</Text>
+                            <Text style={styles.earnDescription}>Gana tokens dejando reseñas de los objetos que alquilaste(solo podras Calificar el mismo objeto 1 vez)</Text>
                             <View style={styles.earnReward}>
                                 <Text style={{ fontSize: 16 }}>💰</Text>
                                 <Text style={styles.earnRewardText}>+5 tokens</Text>
