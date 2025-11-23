@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -212,160 +211,160 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View style={styles.modalWrapper}>
-                <View style={styles.modalContainer}>
-                  {/* Header */}
-                  <View style={styles.header}>
-                    <Text style={styles.title}>Editar Perfil</Text>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton} disabled={loading}>
-                      <Ionicons name="close" size={24} color="#333" />
-                    </TouchableOpacity>
+            <View style={styles.modalWrapper}>
+              <View style={styles.modalContainer}>
+                {/* Header */}
+                <View style={styles.header}>
+                  <Text style={styles.title}>Editar Perfil</Text>
+                  <TouchableOpacity onPress={onClose} style={styles.closeButton} disabled={loading}>
+                    <Ionicons name="close" size={24} color="#333" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Contenido Scrolleable */}
+                <ScrollView
+                  contentContainerStyle={styles.content}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  scrollEnabled={true}
+                  nestedScrollEnabled={true}
+                >
+                  <View style={styles.photoSection}>
+                    <View style={styles.photoContainer}>
+                      {fotoUri ? (
+                        <Image source={{ uri: fotoUri }} style={styles.profilePhoto} />
+                      ) : (
+                        <View style={[styles.profilePhoto, styles.photoPlaceholder]}>
+                          <Ionicons name="person" size={48} color="#D1D5DB" />
+                        </View>
+                      )}
+                      <TouchableOpacity style={styles.photoEditButton} onPress={pickImage} disabled={loading}>
+                        <Ionicons name="camera" size={16} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.photoHint}>Toca para cambiar foto</Text>
                   </View>
 
-                  {/* Contenido Scrolleable */}
-                  <ScrollView
-                    contentContainerStyle={styles.content}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    <View style={styles.photoSection}>
-                      <View style={styles.photoContainer}>
-                        {fotoUri ? (
-                          <Image source={{ uri: fotoUri }} style={styles.profilePhoto} />
-                        ) : (
-                          <View style={[styles.profilePhoto, styles.photoPlaceholder]}>
-                            <Ionicons name="person" size={48} color="#D1D5DB" />
-                          </View>
-                        )}
-                        <TouchableOpacity style={styles.photoEditButton} onPress={pickImage} disabled={loading}>
-                          <Ionicons name="camera" size={16} color="white" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.photoHint}>Toca para cambiar foto</Text>
-                    </View>
+                  <View style={styles.divider} />
 
-                    <View style={styles.divider} />
+                  {/* Información Personal */}
+                  <Text style={styles.sectionHeader}>Información Personal</Text>
 
-                    {/* Información Personal */}
-                    <Text style={styles.sectionHeader}>Información Personal</Text>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Nombre *</Text>
+                    <TextInput
+                      style={[styles.input, errors.nombre && styles.inputError]}
+                      value={nombre}
+                      onChangeText={(text) => {
+                        setNombre(text)
+                        if (errors.nombre) setErrors({ ...errors, nombre: "" })
+                      }}
+                      placeholder="Tu nombre completo"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!loading}
+                    />
+                    <ErrorText field="nombre" />
+                  </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Nombre *</Text>
-                      <TextInput
-                        style={[styles.input, errors.nombre && styles.inputError]}
-                        value={nombre}
-                        onChangeText={(text) => {
-                          setNombre(text)
-                          if (errors.nombre) setErrors({ ...errors, nombre: "" })
-                        }}
-                        placeholder="Tu nombre completo"
-                        placeholderTextColor="#9CA3AF"
-                        editable={!loading}
-                      />
-                      <ErrorText field="nombre" />
-                    </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Número de Teléfono</Text>
+                    <TextInput
+                      style={[styles.input, errors.telefono && styles.inputError]}
+                      value={telefono}
+                      onChangeText={(text) => {
+                        setTelefono(text)
+                        if (errors.telefono) setErrors({ ...errors, telefono: "" })
+                      }}
+                      keyboardType="phone-pad"
+                      placeholder="Ej. 77777777"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!loading}
+                    />
+                    <ErrorText field="telefono" />
+                  </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Número de Teléfono</Text>
-                      <TextInput
-                        style={[styles.input, errors.telefono && styles.inputError]}
-                        value={telefono}
-                        onChangeText={(text) => {
-                          setTelefono(text)
-                          if (errors.telefono) setErrors({ ...errors, telefono: "" })
-                        }}
-                        keyboardType="phone-pad"
-                        placeholder="Ej. 77777777"
-                        placeholderTextColor="#9CA3AF"
-                        editable={!loading}
-                      />
-                      <ErrorText field="telefono" />
-                    </View>
+                  <View style={styles.divider} />
 
-                    <View style={styles.divider} />
+                  {/* Seguridad */}
+                  <Text style={styles.sectionHeader}>Cambiar Contraseña</Text>
+                  <Text style={styles.subHeader}>Llena estos campos solo si deseas cambiar tu contraseña.</Text>
 
-                    {/* Seguridad */}
-                    <Text style={styles.sectionHeader}>Cambiar Contraseña</Text>
-                    <Text style={styles.subHeader}>Llena estos campos solo si deseas cambiar tu contraseña.</Text>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Contraseña Actual</Text>
+                    <TextInput
+                      style={[styles.input, errors.currentPassword && styles.inputError]}
+                      value={currentPassword}
+                      onChangeText={(text) => {
+                        setCurrentPassword(text)
+                        if (errors.currentPassword) setErrors({ ...errors, currentPassword: "" })
+                      }}
+                      secureTextEntry
+                      placeholder="Ingresa tu contraseña actual"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!loading}
+                    />
+                    <ErrorText field="currentPassword" />
+                  </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Contraseña Actual</Text>
-                      <TextInput
-                        style={[styles.input, errors.currentPassword && styles.inputError]}
-                        value={currentPassword}
-                        onChangeText={(text) => {
-                          setCurrentPassword(text)
-                          if (errors.currentPassword) setErrors({ ...errors, currentPassword: "" })
-                        }}
-                        secureTextEntry
-                        placeholder="Ingresa tu contraseña actual"
-                        placeholderTextColor="#9CA3AF"
-                        editable={!loading}
-                      />
-                      <ErrorText field="currentPassword" />
-                    </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Nueva Contraseña</Text>
+                    <TextInput
+                      style={[styles.input, errors.newPassword && styles.inputError]}
+                      value={newPassword}
+                      onChangeText={(text) => {
+                        setNewPassword(text)
+                        if (errors.newPassword) setErrors({ ...errors, newPassword: "" })
+                      }}
+                      secureTextEntry
+                      placeholder="Mínimo 6 caracteres"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!loading}
+                    />
+                    <ErrorText field="newPassword" />
+                  </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Nueva Contraseña</Text>
-                      <TextInput
-                        style={[styles.input, errors.newPassword && styles.inputError]}
-                        value={newPassword}
-                        onChangeText={(text) => {
-                          setNewPassword(text)
-                          if (errors.newPassword) setErrors({ ...errors, newPassword: "" })
-                        }}
-                        secureTextEntry
-                        placeholder="Mínimo 6 caracteres"
-                        placeholderTextColor="#9CA3AF"
-                        editable={!loading}
-                      />
-                      <ErrorText field="newPassword" />
-                    </View>
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Confirmar Contraseña</Text>
+                    <TextInput
+                      style={[styles.input, errors.confirmPassword && styles.inputError]}
+                      value={confirmPassword}
+                      onChangeText={(text) => {
+                        setConfirmPassword(text)
+                        if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" })
+                      }}
+                      secureTextEntry
+                      placeholder="Repite la nueva contraseña"
+                      placeholderTextColor="#9CA3AF"
+                      editable={!loading}
+                    />
+                    <ErrorText field="confirmPassword" />
+                  </View>
 
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Confirmar Contraseña</Text>
-                      <TextInput
-                        style={[styles.input, errors.confirmPassword && styles.inputError]}
-                        value={confirmPassword}
-                        onChangeText={(text) => {
-                          setConfirmPassword(text)
-                          if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" })
-                        }}
-                        secureTextEntry
-                        placeholder="Repite la nueva contraseña"
-                        placeholderTextColor="#9CA3AF"
-                        editable={!loading}
-                      />
-                      <ErrorText field="confirmPassword" />
-                    </View>
+                  {/* Botones */}
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity
+                      style={[styles.cancelButton, loading && styles.buttonDisabled]}
+                      onPress={onClose}
+                      disabled={loading}
+                    >
+                      <Text style={styles.cancelText}>Cancelar</Text>
+                    </TouchableOpacity>
 
-                    {/* Botones */}
-                    <View style={styles.buttonContainer}>
-                      <TouchableOpacity
-                        style={[styles.cancelButton, loading && styles.buttonDisabled]}
-                        onPress={onClose}
-                        disabled={loading}
-                      >
-                        <Text style={styles.cancelText}>Cancelar</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.saveButton, loading && styles.buttonDisabled]}
-                        onPress={handleUpdate}
-                        disabled={loading}
-                      >
-                        {loading ? (
-                          <ActivityIndicator color="#fff" />
-                        ) : (
-                          <Text style={styles.saveText}>Guardar Cambios</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </ScrollView>
-                </View>
+                    <TouchableOpacity
+                      style={[styles.saveButton, loading && styles.buttonDisabled]}
+                      onPress={handleUpdate}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.saveText}>Guardar Cambios</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
               </View>
-            </TouchableWithoutFeedback>
+            </View>
           </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>
@@ -377,11 +376,15 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   keyboardView: {
     flex: 1,
     justifyContent: "center",
-    padding: 20,
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 20,
   },
   modalWrapper: {
     width: "100%",
@@ -398,6 +401,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     overflow: "hidden",
+    flexDirection: "column",
   },
   header: {
     flexDirection: "row",
