@@ -37,6 +37,10 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  const [enablePasswordChange, setEnablePasswordChange] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     if (visible && usuario) {
@@ -47,6 +51,10 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
       setNewPassword("")
       setConfirmPassword("")
       setErrors({})
+      setEnablePasswordChange(false)
+      setShowCurrentPassword(false)
+      setShowNewPassword(false)
+      setShowConfirmPassword(false)
     }
   }, [visible, usuario])
 
@@ -63,7 +71,7 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
       newErrors.telefono = "El teléfono debe tener al menos 7 caracteres"
     }
 
-    if (newPassword.trim().length > 0 || confirmPassword.trim().length > 0) {
+    if (enablePasswordChange) {
       if (!currentPassword.trim()) {
         newErrors.currentPassword = "Debes ingresar tu contraseña actual para cambiarla"
       }
@@ -136,7 +144,7 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
 
     setLoading(true)
     try {
-      if (newPassword.trim().length > 0) {
+      if (enablePasswordChange && newPassword.trim().length > 0) {
         const {
           data: { user: authUser },
           error: authUserError,
@@ -208,166 +216,217 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
 
   return (
     <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
-            <View style={styles.modalWrapper}>
-              <View style={styles.modalContainer}>
-                {/* Header */}
-                <View style={styles.header}>
-                  <Text style={styles.title}>Editar Perfil</Text>
-                  <TouchableOpacity onPress={onClose} style={styles.closeButton} disabled={loading}>
-                    <Ionicons name="close" size={24} color="#333" />
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.overlayBackground} />
+        </TouchableWithoutFeedback>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
+          <View style={styles.modalWrapper}>
+            <View style={styles.modalContainer}>
+              {/* Header */}
+              <View style={styles.header}>
+                <Text style={styles.title}>Editar Perfil</Text>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton} disabled={loading}>
+                  <Ionicons name="close" size={24} color="#333" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Contenido Scrolleable */}
+              <ScrollView
+                contentContainerStyle={styles.content}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                scrollEnabled={true}
+                nestedScrollEnabled={true}
+              >
+                <View style={styles.photoSection}>
+                  <View style={styles.photoContainer}>
+                    {fotoUri ? (
+                      <Image source={{ uri: fotoUri }} style={styles.profilePhoto} />
+                    ) : (
+                      <View style={[styles.profilePhoto, styles.photoPlaceholder]}>
+                        <Ionicons name="person" size={80} color="#D1D5DB" />
+                      </View>
+                    )}
+                    <TouchableOpacity style={styles.photoEditButton} onPress={pickImage} disabled={loading}>
+                      <Ionicons name="camera" size={24} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.photoLabel}>Foto de Perfil</Text>
+                  <Text style={styles.photoHint}>Toca el botón para cambiar foto</Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                {/* Información Personal */}
+                <Text style={styles.sectionHeader}>Información Personal</Text>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Nombre *</Text>
+                  <TextInput
+                    style={[styles.input, errors.nombre && styles.inputError]}
+                    value={nombre}
+                    onChangeText={(text) => {
+                      setNombre(text)
+                      if (errors.nombre) setErrors({ ...errors, nombre: "" })
+                    }}
+                    placeholder="Tu nombre completo"
+                    placeholderTextColor="#9CA3AF"
+                    editable={!loading}
+                  />
+                  <ErrorText field="nombre" />
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Número de Teléfono</Text>
+                  <TextInput
+                    style={[styles.input, errors.telefono && styles.inputError]}
+                    value={telefono}
+                    onChangeText={(text) => {
+                      setTelefono(text)
+                      if (errors.telefono) setErrors({ ...errors, telefono: "" })
+                    }}
+                    keyboardType="phone-pad"
+                    placeholder="Ej. 77777777"
+                    placeholderTextColor="#9CA3AF"
+                    editable={!loading}
+                  />
+                  <ErrorText field="telefono" />
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.passwordSectionHeader}>
+                  <View style={styles.passwordHeaderText}>
+                    <Text style={styles.sectionHeader}>Cambiar Contraseña</Text>
+                    <Text style={styles.header}>Habilita para cambiar tu contraseña.</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.toggleButton, enablePasswordChange && styles.toggleButtonActive]}
+                    onPress={() => {
+                      setEnablePasswordChange(!enablePasswordChange)
+                      if (!enablePasswordChange) {
+                        setCurrentPassword("")
+                        setNewPassword("")
+                        setConfirmPassword("")
+                        setErrors({})
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    <View style={styles.toggleContent}>
+                      <Ionicons
+                        name={enablePasswordChange ? "toggle" : "toggle-outline"}
+                        size={32}
+                        color={enablePasswordChange ? "#6366F1" : "#D1D5DB"}
+                      />
+                    </View>
                   </TouchableOpacity>
                 </View>
 
-                {/* Contenido Scrolleable */}
-                <ScrollView
-                  contentContainerStyle={styles.content}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  scrollEnabled={true}
-                  nestedScrollEnabled={true}
-                >
-                  <View style={styles.photoSection}>
-                    <View style={styles.photoContainer}>
-                      {fotoUri ? (
-                        <Image source={{ uri: fotoUri }} style={styles.profilePhoto} />
-                      ) : (
-                        <View style={[styles.profilePhoto, styles.photoPlaceholder]}>
-                          <Ionicons name="person" size={48} color="#D1D5DB" />
-                        </View>
-                      )}
-                      <TouchableOpacity style={styles.photoEditButton} onPress={pickImage} disabled={loading}>
-                        <Ionicons name="camera" size={16} color="white" />
-                      </TouchableOpacity>
+                {enablePasswordChange && (
+                  <>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Contraseña Actual</Text>
+                      <View style={styles.passwordInputWrapper}>
+                        <TextInput
+                          style={[styles.input, styles.passwordInput, errors.currentPassword && styles.inputError]}
+                          value={currentPassword}
+                          onChangeText={(text) => {
+                            setCurrentPassword(text)
+                            if (errors.currentPassword) setErrors({ ...errors, currentPassword: "" })
+                          }}
+                          secureTextEntry={!showCurrentPassword}
+                          placeholder="Ingresa tu contraseña actual"
+                          placeholderTextColor="#9CA3AF"
+                          editable={!loading}
+                        />
+                        <TouchableOpacity
+                          onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                          style={styles.eyeButton}
+                        >
+                          <Ionicons name={showCurrentPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+                      <ErrorText field="currentPassword" />
                     </View>
-                    <Text style={styles.photoHint}>Toca para cambiar foto</Text>
-                  </View>
 
-                  <View style={styles.divider} />
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Nueva Contraseña</Text>
+                      <View style={styles.passwordInputWrapper}>
+                        <TextInput
+                          style={[styles.input, styles.passwordInput, errors.newPassword && styles.inputError]}
+                          value={newPassword}
+                          onChangeText={(text) => {
+                            setNewPassword(text)
+                            if (errors.newPassword) setErrors({ ...errors, newPassword: "" })
+                          }}
+                          secureTextEntry={!showNewPassword}
+                          placeholder="Mínimo 6 caracteres"
+                          placeholderTextColor="#9CA3AF"
+                          editable={!loading}
+                        />
+                        <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeButton}>
+                          <Ionicons name={showNewPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+                      <ErrorText field="newPassword" />
+                    </View>
 
-                  {/* Información Personal */}
-                  <Text style={styles.sectionHeader}>Información Personal</Text>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Confirmar Contraseña</Text>
+                      <View style={styles.passwordInputWrapper}>
+                        <TextInput
+                          style={[styles.input, styles.passwordInput, errors.confirmPassword && styles.inputError]}
+                          value={confirmPassword}
+                          onChangeText={(text) => {
+                            setConfirmPassword(text)
+                            if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" })
+                          }}
+                          secureTextEntry={!showConfirmPassword}
+                          placeholder="Repite la nueva contraseña"
+                          placeholderTextColor="#9CA3AF"
+                          editable={!loading}
+                        />
+                        <TouchableOpacity
+                          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                          style={styles.eyeButton}
+                        >
+                          <Ionicons name={showConfirmPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                      </View>
+                      <ErrorText field="confirmPassword" />
+                    </View>
+                  </>
+                )}
 
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Nombre *</Text>
-                    <TextInput
-                      style={[styles.input, errors.nombre && styles.inputError]}
-                      value={nombre}
-                      onChangeText={(text) => {
-                        setNombre(text)
-                        if (errors.nombre) setErrors({ ...errors, nombre: "" })
-                      }}
-                      placeholder="Tu nombre completo"
-                      placeholderTextColor="#9CA3AF"
-                      editable={!loading}
-                    />
-                    <ErrorText field="nombre" />
-                  </View>
+                {/* Botones */}
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity
+                    style={[styles.cancelButton, loading && styles.buttonDisabled]}
+                    onPress={onClose}
+                    disabled={loading}
+                  >
+                    <Text style={styles.cancelText}>Cancelar</Text>
+                  </TouchableOpacity>
 
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Número de Teléfono</Text>
-                    <TextInput
-                      style={[styles.input, errors.telefono && styles.inputError]}
-                      value={telefono}
-                      onChangeText={(text) => {
-                        setTelefono(text)
-                        if (errors.telefono) setErrors({ ...errors, telefono: "" })
-                      }}
-                      keyboardType="phone-pad"
-                      placeholder="Ej. 77777777"
-                      placeholderTextColor="#9CA3AF"
-                      editable={!loading}
-                    />
-                    <ErrorText field="telefono" />
-                  </View>
-
-                  <View style={styles.divider} />
-
-                  {/* Seguridad */}
-                  <Text style={styles.sectionHeader}>Cambiar Contraseña</Text>
-                  <Text style={styles.subHeader}>Llena estos campos solo si deseas cambiar tu contraseña.</Text>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Contraseña Actual</Text>
-                    <TextInput
-                      style={[styles.input, errors.currentPassword && styles.inputError]}
-                      value={currentPassword}
-                      onChangeText={(text) => {
-                        setCurrentPassword(text)
-                        if (errors.currentPassword) setErrors({ ...errors, currentPassword: "" })
-                      }}
-                      secureTextEntry
-                      placeholder="Ingresa tu contraseña actual"
-                      placeholderTextColor="#9CA3AF"
-                      editable={!loading}
-                    />
-                    <ErrorText field="currentPassword" />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Nueva Contraseña</Text>
-                    <TextInput
-                      style={[styles.input, errors.newPassword && styles.inputError]}
-                      value={newPassword}
-                      onChangeText={(text) => {
-                        setNewPassword(text)
-                        if (errors.newPassword) setErrors({ ...errors, newPassword: "" })
-                      }}
-                      secureTextEntry
-                      placeholder="Mínimo 6 caracteres"
-                      placeholderTextColor="#9CA3AF"
-                      editable={!loading}
-                    />
-                    <ErrorText field="newPassword" />
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Confirmar Contraseña</Text>
-                    <TextInput
-                      style={[styles.input, errors.confirmPassword && styles.inputError]}
-                      value={confirmPassword}
-                      onChangeText={(text) => {
-                        setConfirmPassword(text)
-                        if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" })
-                      }}
-                      secureTextEntry
-                      placeholder="Repite la nueva contraseña"
-                      placeholderTextColor="#9CA3AF"
-                      editable={!loading}
-                    />
-                    <ErrorText field="confirmPassword" />
-                  </View>
-
-                  {/* Botones */}
-                  <View style={styles.buttonContainer}>
-                    <TouchableOpacity
-                      style={[styles.cancelButton, loading && styles.buttonDisabled]}
-                      onPress={onClose}
-                      disabled={loading}
-                    >
-                      <Text style={styles.cancelText}>Cancelar</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.saveButton, loading && styles.buttonDisabled]}
-                      onPress={handleUpdate}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.saveText}>Guardar Cambios</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </ScrollView>
-              </View>
+                  <TouchableOpacity
+                    style={[styles.saveButton, loading && styles.buttonDisabled]}
+                    onPress={handleUpdate}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveText}>Guardar Cambios</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
-          </KeyboardAvoidingView>
-        </View>
-      </TouchableWithoutFeedback>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   )
 }
@@ -384,7 +443,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   modalWrapper: {
     width: "100%",
@@ -392,14 +451,14 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: "white",
-    borderRadius: 20,
+    borderRadius: 24,
     width: "100%",
-    maxHeight: "90%",
+    maxHeight: "95%",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
     overflow: "hidden",
     flexDirection: "column",
   },
@@ -407,35 +466,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
     backgroundColor: "#FFFFFF",
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#1F293B",
   },
   closeButton: {
-    padding: 4,
+    padding: 8,
   },
   content: {
-    padding: 20,
+    padding: 24,
   },
   photoSection: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 28,
   },
   photoContainer: {
     position: "relative",
-    marginBottom: 8,
+    marginBottom: 16,
   },
   profilePhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     backgroundColor: "#F3F4F6",
+    borderWidth: 3,
+    borderColor: "#E5E7EB",
   },
   photoPlaceholder: {
     justifyContent: "center",
@@ -443,33 +504,66 @@ const styles = StyleSheet.create({
   },
   photoEditButton: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
+    bottom: 8,
+    right: 8,
     backgroundColor: "#6366F1",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: "white",
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  photoLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F293B",
+    marginBottom: 4,
   },
   photoHint: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#6B7280",
     fontStyle: "italic",
   },
   sectionHeader: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
     color: "#6366F1",
     marginBottom: 8,
   },
-  subHeader: {
-    fontSize: 13,
-    color: "#6B7280",
+  passwordSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 16,
-    fontStyle: "italic",
+    gap: 12,
+  },
+  toggleButton: {
+    padding: 6,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleButtonActive: {
+    backgroundColor: "#EEF2FF",
+    borderWidth: 2,
+    borderColor: "#6366F1",
+  },
+  toggleContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  passwordHeaderText: {
+    flex: 1,
   },
   inputContainer: {
     marginBottom: 16,
@@ -477,17 +571,31 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     color: "#374151",
-    marginBottom: 6,
-    fontWeight: "500",
+    marginBottom: 8,
+    fontWeight: "600",
   },
   input: {
     borderWidth: 1,
     borderColor: "#D1D5DB",
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
     color: "#111827",
     backgroundColor: "#F9FAFB",
+  },
+  passwordInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  passwordInput: {
+    flex: 1,
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 14,
+    padding: 8,
   },
   inputError: {
     borderColor: "#EF4444",
@@ -496,37 +604,37 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: "#EF4444",
-    marginTop: 4,
+    marginTop: 6,
     fontWeight: "500",
   },
   divider: {
     height: 1,
     backgroundColor: "#E5E7EB",
-    marginVertical: 20,
+    marginVertical: 24,
   },
   buttonContainer: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 24,
+    marginBottom: 8,
   },
   cancelButton: {
     flex: 1,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#D1D5DB",
-    padding: 12,
+    padding: 14,
     borderRadius: 12,
     alignItems: "center",
   },
   cancelText: {
     color: "#6B7280",
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 15,
   },
   saveButton: {
     flex: 1,
     backgroundColor: "#6366F1",
-    padding: 12,
+    padding: 14,
     borderRadius: 12,
     alignItems: "center",
     shadowColor: "#6366F1",
@@ -538,9 +646,16 @@ const styles = StyleSheet.create({
   saveText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 15,
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  overlayBackground: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 })
