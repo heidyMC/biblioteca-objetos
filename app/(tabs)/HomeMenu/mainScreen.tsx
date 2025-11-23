@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   Image,
@@ -50,7 +50,15 @@ const MainScreen = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [messageIndex, setMessageIndex] = useState(0)
   const router = useRouter()
+
+  const heroMessages = [
+    "Accede a miles de objetos usando tokens. Ahorra dinero y espacio.",
+    "Bibleoteca de objetos dinero con nostros  y ayuda al planeta.",
+    "Alquila sin compromiso a largo plazo. Flexibilidad total.",
+    "Gana tokens con reseñas y devoluciones a tiempo.",
+  ]
 
   useFocusEffect(
     useCallback(() => {
@@ -71,35 +79,38 @@ const MainScreen = () => {
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
-        setLoading(true);
-        const { data: productosData, error: errorProductos } = await supabase
-          .from("objetos")
-          .select(`
+        setLoading(true)
+        const { data: productosData, error: errorProductos } = await supabase.from("objetos").select(`
             *,
             categorias ( nombre )
-          `);
+          `)
 
         if (errorProductos) {
-          console.error("Error cargando productos:", errorProductos.message);
+          console.error("Error cargando productos:", errorProductos.message)
         } else {
-          setProductos(productosData || []);
+          setProductos(productosData || [])
         }
-        const { data: categoriasData, error: errorCategorias } = await supabase
-          .from("categorias")
-          .select("id, nombre");
+        const { data: categoriasData, error: errorCategorias } = await supabase.from("categorias").select("id, nombre")
 
         if (errorCategorias) {
-          console.error("Error cargando categorías:", errorCategorias.message);
+          console.error("Error cargando categorías:", errorCategorias.message)
         } else {
-          setCategorias(categoriasData || []);
+          setCategorias(categoriasData || [])
         }
-        setLoading(false);
-      };
+        setLoading(false)
+      }
 
-      fetchData();
-    }, [])
-  );
+      fetchData()
+    }, []),
+  )
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % heroMessages.length)
+    }, 8000)
+
+    return () => clearInterval(interval)
+  }, [heroMessages.length])
 
   const productosFiltrados = productos.filter((item) => {
     const matchSearch = item.nombre.toLowerCase().includes(search.toLowerCase())
@@ -115,12 +126,7 @@ const MainScreen = () => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.headerFixed}>
-        {/* Se actualizó la imagen de referencia */}
-        <Image 
-          source={require("@/assets/images/prestafacil-icon.jpg")} 
-          style={styles.logo} 
-          resizeMode="contain" 
-        />
+        <Image source={require("@/assets/images/prestafacil-icon.jpg")} style={styles.logo} resizeMode="contain" />
         <View style={styles.profileContainer}>
           <View style={styles.tokensBadge}>
             <TextComponent
@@ -130,7 +136,10 @@ const MainScreen = () => {
               textColor="#fff"
             />
           </View>
-          <TouchableOpacity style={styles.profileButton} onPress={() => router.push("/(tabs)/Perfil/PerfilUsuario" as unknown as any)}>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => router.push("/(tabs)/Perfil/PerfilUsuario" as unknown as any)}
+          >
             <Image
               source={{
                 uri: usuario?.foto_url || "https://placehold.co/100x100?text=Sin+Foto",
@@ -154,12 +163,7 @@ const MainScreen = () => {
 
       <View style={styles.heroSection}>
         <TextComponent text="Alquila lo que necesites" fontWeight="bold" textSize={28} textColor="#1E293B" />
-        <TextComponent
-          text="Accede a miles de objetos usando tokens. Ahorra dinero y espacio."
-          textSize={16}
-          textColor="#64748B"
-          style={{ marginTop: 8 }}
-        />
+        <TextComponent text={heroMessages[messageIndex]} textSize={16} textColor="#64748B" style={{ marginTop: 8 }} />
       </View>
 
       <View style={styles.categoriesSection}>
@@ -434,14 +438,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 50,
-    paddingBottom: 15,
+    paddingBottom: 20,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   logo: {
-    width: 120,
-    height: 40,
+    width: 80,
+    height: 80,
   },
   profileContainer: {
     flexDirection: "row",
