@@ -74,11 +74,10 @@ export default function LoginScreen() {
   const signInWithGoogle = async () => {
     setIsLoading(true)
     try {
-      // 1. URL de redirección dinámica (APK y Dev)
       const redirectTo = makeRedirectUri({
-        scheme: 'prestafacil',
-        path: 'google-auth'
-      });
+        scheme: "prestafacil",
+        path: "google-auth",
+      })
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -94,59 +93,50 @@ export default function LoginScreen() {
         const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
 
         if (res.type === "success") {
-          const { url } = res;
-          
-          // --- CORRECCIÓN DEL ERROR DE TYPESCRIPT ---
-          // getQueryParams devuelve un objeto { params: {...}, errorCode: ... }
-          // Primero extraemos 'params' de ese resultado
-          const { params } = QueryParams.getQueryParams(url);
-          
-          // Ahora sí extraemos los tokens desde 'params'
-          const { access_token, refresh_token } = params;
+          const { url } = res
+          const { params } = QueryParams.getQueryParams(url)
+          const { access_token, refresh_token } = params
 
           if (access_token && refresh_token) {
-            // Crear sesión en Supabase
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token,
-              refresh_token,
-            });
+            const { data: sessionData, error: sessionError } =
+              await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+              })
 
-            if (sessionError) throw sessionError;
+            if (sessionError) throw sessionError
 
-            const user = sessionData.user;
-            if (!user) throw new Error("No se pudo obtener el usuario");
+            const user = sessionData.user
+            if (!user) throw new Error("No se pudo obtener el usuario")
 
-            // Verificar si existe en nuestra tabla 'usuarios'
             const { data: existing } = await supabase
               .from("usuarios")
               .select("*")
               .eq("correo", user.email)
-              .maybeSingle();
+              .maybeSingle()
 
-            let usuarioFinal = existing;
+            let usuarioFinal = existing
 
             if (!existing) {
-              // Si es la primera vez que entra con Google, lo creamos
-              const { data: newUser, error: insertError } = await supabase.from("usuarios").insert([
-                {
-                  // Usamos user.email porque id de auth puede variar
-                  nombre: user.user_metadata.full_name || "Usuario Google",
-                  correo: user.email,
-                  foto_url: user.user_metadata.avatar_url,
-                  tokens_disponibles: 150, // Bono bienvenida
-                },
-              ])
-              .select()
-              .single();
+              const { data: newUser, error: insertError } = await supabase
+                .from("usuarios")
+                .insert([
+                  {
+                    nombre: user.user_metadata.full_name || "Usuario Google",
+                    correo: user.email,
+                    foto_url: user.user_metadata.avatar_url,
+                    tokens_disponibles: 150,
+                  },
+                ])
+                .select()
+                .single()
 
-              if (insertError) throw insertError;
-              usuarioFinal = newUser;
+              if (insertError) throw insertError
+              usuarioFinal = newUser
             }
 
-            // --- CORRECCIÓN DEL BUG DE NAVEGACIÓN ---
-            // Guardar en AsyncStorage antes de navegar
-            await limpiarCache();
-            await AsyncStorage.setItem("usuario", JSON.stringify(usuarioFinal));
+            await limpiarCache()
+            await AsyncStorage.setItem("usuario", JSON.stringify(usuarioFinal))
 
             Alert.alert("Bienvenido", `Has iniciado sesión como ${usuarioFinal.nombre}`)
             router.replace("/(tabs)/HomeMenu/mainScreen")
@@ -155,9 +145,8 @@ export default function LoginScreen() {
       }
     } catch (error: any) {
       console.error("Error al iniciar sesión con Google:", error)
-      // Evitar alerta si el usuario canceló
       if (error.message !== "User cancelled the auth session") {
-          Alert.alert("Error", "No se pudo iniciar sesión con Google.")
+        Alert.alert("Error", "No se pudo iniciar sesión con Google.")
       }
     } finally {
       setIsLoading(false)
@@ -170,12 +159,15 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Image 
+              <Image
                 source={require("../../assets/images/prestafacil-icon.jpg")}
-                style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                style={{ width: "100%", height: "100%", borderRadius: 20 }}
                 resizeMode="cover"
               />
             </View>
@@ -188,6 +180,7 @@ export default function LoginScreen() {
             <Text style={styles.cardDescription}>Ingresa tus credenciales para acceder</Text>
 
             <View style={styles.form}>
+              {/* EMAIL */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Correo electrónico</Text>
                 <TextInput
@@ -201,30 +194,34 @@ export default function LoginScreen() {
                 />
               </View>
 
+              {/* PASSWORD - CORREGIDO */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Contraseña</Text>
-                <View style={styles.passwordContainer}>
+
+                <View style={styles.inputPasswordWrapper}>
                   <TextInput
-                    style={[styles.input, { flex: 1 }]}
+                    style={styles.inputPassword}
                     placeholder="••••••••"
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={setPassword}
                     editable={!isLoading}
                   />
+
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeButton}
+                    style={styles.eyeInside}
                   >
                     <Ionicons
                       name={showPassword ? "eye-off" : "eye"}
-                      size={20}
+                      size={22}
                       color="#737373"
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
+              {/* LOGIN BUTTON */}
               <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleLogin}
@@ -241,6 +238,7 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
+              {/* GOOGLE */}
               <TouchableOpacity
                 style={[styles.googleButton, isLoading && styles.buttonDisabled]}
                 onPress={signInWithGoogle}
@@ -250,7 +248,10 @@ export default function LoginScreen() {
                 <Text style={styles.googleButtonText}>Continuar con Google</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.linkContainer} onPress={() => router.push("/register")}>
+              <TouchableOpacity
+                style={styles.linkContainer}
+                onPress={() => router.push("/register")}
+              >
                 <Text style={styles.linkText}>
                   ¿No tienes una cuenta? <Text style={styles.linkTextBold}>Regístrate aquí</Text>
                 </Text>
@@ -261,7 +262,8 @@ export default function LoginScreen() {
           <View style={styles.footer}>
             <Ionicons name="gift" size={20} color="#F59E0B" />
             <Text style={styles.footerText}>
-              Nuevos usuarios reciben <Text style={styles.footerTextBold}>100 tokens gratis</Text>
+              Nuevos usuarios reciben{" "}
+              <Text style={styles.footerTextBold}>150 tokens gratis</Text>
             </Text>
           </View>
         </ScrollView>
@@ -274,7 +276,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F9FAFB" },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: "center", padding: 16 },
+
   header: { alignItems: "center", marginBottom: 32 },
+
   logoContainer: {
     width: 80,
     height: 80,
@@ -290,8 +294,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+
   title: { fontSize: 24, fontWeight: "700", color: "#0A0A0A", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#737373" },
+
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -302,61 +308,100 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+
   cardTitle: { fontSize: 24, fontWeight: "700", color: "#0A0A0A", marginBottom: 8 },
   cardDescription: { fontSize: 14, color: "#737373", marginBottom: 24 },
+
   form: { gap: 16 },
   inputGroup: { gap: 8 },
-  label: { fontSize: 14, fontWeight: "500", color: "#0A0A0A" },
+
+  label: { fontSize: 14, fontWeight: "600", color: "#0A0A0A" },
+
   input: {
-    height: 48,
+    height: 45,
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
     fontSize: 16,
-    backgroundColor: "#FFFFFF",
-    color: "#0A0A0A",
   },
-  passwordContainer: { flexDirection: "row", alignItems: "center" },
-  eyeButton: { paddingHorizontal: 8 },
-  button: {
-    height: 48,
-    backgroundColor: "#6366F1",
-    borderRadius: 12,
-    justifyContent: "center",
+
+  // 🔥 INPUT DE CONTRASEÑA MODERNO
+  inputPasswordWrapper: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { fontSize: 16, fontWeight: "600", color: "#FFFFFF" },
-  divider: { flexDirection: "row", alignItems: "center", marginVertical: 8 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: "#E5E5E5" },
-  dividerText: { marginHorizontal: 16, fontSize: 14, color: "#737373" },
-  googleButton: {
-    height: 48,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F9FAFB",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 12,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+
+  inputPassword: {
+    flex: 1,
+    height: 45,
+    fontSize: 16,
+  },
+
+  eyeInside: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+
+  button: {
+    backgroundColor: "#2563EB",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
+  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 12,
+    justifyContent: "center",
+  },
+  dividerLine: {
+    width: "20%",
+    height: 1,
+    backgroundColor: "#D1D5DB",
+  },
+  dividerText: {
+    marginHorizontal: 8,
+    fontSize: 14,
+    color: "#737373",
+  },
+
+  googleButton: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  googleButtonText: { fontSize: 16, fontWeight: "600", color: "#0A0A0A" },
-  linkContainer: { alignItems: "center", marginTop: 8 },
-  linkText: { fontSize: 14, color: "#737373" },
-  linkTextBold: { fontWeight: "600", color: "#6366F1" },
+  googleButtonText: { fontSize: 16, color: "#0A0A0A", fontWeight: "600" },
+
+  linkContainer: { marginTop: 12 },
+  linkText: { textAlign: "center", color: "#737373" },
+  linkTextBold: { fontWeight: "700", color: "#2563EB" },
+
   footer: {
-    flexDirection: "row",
+    marginTop: 24,
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "center",
     gap: 8,
-    marginTop: 32,
-    backgroundColor: "#FEF3C7",
-    padding: 12,
-    borderRadius: 12,
   },
-  footerText: { fontSize: 14, color: "#737373" },
+  footerText: { color: "#737373", fontSize: 14 },
   footerTextBold: { fontWeight: "700", color: "#F59E0B" },
 })
