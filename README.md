@@ -1,50 +1,50 @@
-# Welcome to your Expo app 👋
+# 📦 PrestaFacil
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> **Alquila lo que necesites, gana tokens y comparte con tu comunidad.**
 
-## Get started
+**PrestaFacil** es una aplicación móvil desarrollada en React Native con Expo que facilita el alquiler de objetos (herramientas, consolas, cámaras, etc.) utilizando un sistema de economía interna basado en **Tokens**.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 📱 Características Principales
 
-2. Start the app
+* **Sistema de Tokens:** Los usuarios adquieren tokens mediante pagos QR y los utilizan para alquilar objetos por días.
+* **Gamificación:**
+    * **Misiones:** Gana tokens extra completando tareas (primera reseña, devoluciones a tiempo).
+    * **Ranking:** Compite por ser el usuario con más tokens.
+    * **Referidos:** Sistema de invitación con recompensas para ambos usuarios.
+* **Roles de Usuario:**
+    * **Usuario Estándar:** Puede alquilar, dejar reseñas, comprar tokens y ver su historial.
+    * **Administrador:** Panel exclusivo para gestionar transacciones, aprobar solicitudes de alquiler y gestionar devoluciones mediante códigos de seguridad.
+* **Autenticación:** Inicio de sesión seguro con Correo/Contraseña y **Google Sign-In**.
+* **Geolocalización:** Visualización de la ubicación de los objetos (integración con mapas).
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🛠️ Tecnologías Utilizadas
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+* **Frontend:** [React Native](https://reactnative.dev/) (v0.81) con [Expo](https://expo.dev/) (SDK 54).
+* **Lenguaje:** [TypeScript](https://www.typescriptlang.org/).
+* **Navegación:** [Expo Router](https://docs.expo.dev/router/introduction/) (Navegación basada en archivos).
+* **Backend & Base de Datos:** [Supabase](https://supabase.com/) (PostgreSQL, Auth, Storage, Realtime).
+* **Estilos:** React Native StyleSheet.
+* **Componentes UI:** `react-native-safe-area-context`, `expo-image`, `react-native-community/datetimepicker`.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## 🚀 Instalación y Configuración
 
-When you're ready, run:
+Sigue estos pasos para ejecutar el proyecto en tu entorno local.
+
+### 1. Prerrequisitos
+
+* Tener instalado **Node.js** y **npm**.
+* Tener configurado el entorno para desarrollo móvil (Android Studio / Xcode) o tener la app **Expo Go** en tu celular.
+
+### 2. Clonar el repositorio e instalar dependencias
 
 ```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+git clone https://github.com/heidyMC/biblioteca-objetos.git
+cd biblioteca-objetos
+npm install
+npm start
