@@ -10,16 +10,23 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jhonny.prestafacil"
+      "bundleIdentifier": "com.jhonny.prestafacil",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.jhonny.prestafacil",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
-        "foregroundImage": "./assets/images/prestafacil-icon.jpg"
+        "foregroundImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "output": "static",
@@ -48,7 +55,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "29cad6fa-e9d1-456b-bbc7-00cb2d42ef6d"
+        "projectId": "e788a7c8-a678-4e20-adbf-0f411228e989"
       }
     }
   }

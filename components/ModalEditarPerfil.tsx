@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
-import { EncodingType, readAsStringAsync } from "expo-file-system/legacy"
+import * as FileSystem from "expo-file-system"; // Agregado expo-file-system para manejar archivos locales
 import * as ImagePicker from "expo-image-picker"
 import { useEffect, useState } from "react"
 import {
@@ -102,33 +102,53 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
     }
   }
 
-  const uploadPhotoToSupabase = async (uri: string, userId: string) => {
+  // Esto soluciona el problema con usuarios de Google OAuth y archivos locales
+  const uploadPhotoToSupabase = async (uri: string, userId: string): Promise<string> => {
     try {
-      const base64 = await readAsStringAsync(uri, {
-        encoding: EncodingType.Base64,
-      })
-
+      // Generar nombre de archivo único
       const fileName = `${userId}_${Date.now()}.jpg`
 
-      const { data, error } = await supabase.storage.from("fotos_perfil").upload(fileName, decode(base64), {
+      // Verificar si es una URI local (de ImagePicker) o una URL remota
+      const isLocalFile = uri.startsWith("file://") || uri.startsWith("content://")
+
+      let fileData: Uint8Array
+
+      if (isLocalFile) {
+        // Usar FileSystem de Expo para leer archivos locales (más confiable que fetch)
+        const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" })
+
+        // Convertir base64 a Uint8Array
+        fileData = decode(base64)
+      } else {
+        // Para URLs remotas, usar fetch (esto es raro pero por si acaso)
+        const response = await fetch(uri)
+        const buffer = await response.arrayBuffer()
+        fileData = new Uint8Array(buffer)
+      }
+
+      // Subir la imagen a Supabase Storage
+      const { data, error } = await supabase.storage.from("fotos_perfil").upload(fileName, fileData, {
         contentType: "image/jpeg",
         upsert: true,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase upload error:", error)
+        throw error
+      }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("fotos_perfil").getPublicUrl(fileName)
+      // Obtener URL pública de la imagen
+      const { data: publicData } = supabase.storage.from("fotos_perfil").getPublicUrl(fileName)
 
-      return publicUrl
+      return publicData.publicUrl
     } catch (error) {
-      console.error("[v0] Error uploading photo:", error)
+      console.error("Error uploading photo:", error)
       throw error
     }
   }
 
-  const decode = (base64: string) => {
+  // Función helper para decodificar base64 a Uint8Array
+  const decode = (base64: string): Uint8Array => {
     const binaryString = atob(base64)
     const bytes = new Uint8Array(binaryString.length)
     for (let i = 0; i < binaryString.length; i++) {
@@ -144,6 +164,7 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
 
     setLoading(true)
     try {
+      // Cambio de contraseña si está habilitado
       if (enablePasswordChange && newPassword.trim().length > 0) {
         const {
           data: { user: authUser },
@@ -174,30 +195,47 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
         if (updateError) throw updateError
       }
 
+      // Subida de foto con mejor manejo de errores
       let fotoUrl = usuario.foto_url
+      let photoUploadFailed = false
+
+      // Solo intentar subir si hay una nueva foto seleccionada
       if (fotoUri && fotoUri !== usuario.foto_url) {
         try {
           fotoUrl = await uploadPhotoToSupabase(fotoUri, usuario.id)
         } catch (uploadErr: any) {
-          console.error("[v0] Photo upload failed:", uploadErr)
-          Alert.alert("Error", "No se pudo actualizar la foto de perfil. Intenta con otra imagen.")
+          console.error("Photo upload failed:", uploadErr)
+          photoUploadFailed = true
+          // No lanzamos el error, continuamos con la actualización de otros datos
         }
       }
 
+      // Preparar datos para actualizar
       const dataToUpdate: any = {
         nombre: nombre.trim(),
         telefono: telefono.trim(),
       }
 
-      if (fotoUrl && fotoUrl !== usuario.foto_url) {
+      // Solo actualizar foto_url si la subida fue exitosa
+      if (fotoUrl && fotoUrl !== usuario.foto_url && !photoUploadFailed) {
         dataToUpdate.foto_url = fotoUrl
       }
 
+      // Actualizar datos en la base de datos
       const { error: updateDataError } = await supabase.from("usuarios").update(dataToUpdate).eq("id", usuario.id)
 
       if (updateDataError) throw updateDataError
 
-      Alert.alert("¡Éxito!", "Perfil actualizado correctamente.")
+      // Mostrar mensaje apropiado según el resultado
+      if (photoUploadFailed) {
+        Alert.alert(
+          "Perfil Actualizado",
+          "Los datos se actualizaron correctamente, pero no se pudo cambiar la foto de perfil. Verifica los permisos de almacenamiento o intenta con otra imagen.",
+        )
+      } else {
+        Alert.alert("¡Éxito!", "Perfil actualizado correctamente.")
+      }
+
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
@@ -299,7 +337,7 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
                 <View style={styles.passwordSectionHeader}>
                   <View style={styles.passwordHeaderText}>
                     <Text style={styles.sectionHeader}>Cambiar Contraseña</Text>
-                    <Text style={styles.header}>Habilita para cambiar tu contraseña.</Text>
+                    <Text style={styles.passwordHint}>Habilita para cambiar tu contraseña.</Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.toggleButton, enablePasswordChange && styles.toggleButtonActive]}
@@ -543,6 +581,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 16,
     gap: 12,
+  },
+  passwordHint: {
+    fontSize: 13,
+    color: "#6B7280",
   },
   toggleButton: {
     padding: 6,

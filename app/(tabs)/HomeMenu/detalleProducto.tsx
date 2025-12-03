@@ -6,12 +6,11 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
+  ActivityIndicator, Dimensions, Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { supabase } from "../../../lib/supabase";
@@ -47,6 +46,14 @@ interface CaracteristicaObjeto {
   valor: string;
 }
 
+// <CHANGE> Added interface for additional images
+interface ImagenObjeto {
+  id: string;
+  objeto_id: string;
+  url: string;
+  created_at: string;
+}
+
 interface Resenia {
   id: number;
   comentario: string;
@@ -57,6 +64,7 @@ interface Resenia {
     foto_url: string;
   };
 }
+const { width } = Dimensions.get("window");
 
 const DetalleProducto = () => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -64,14 +72,17 @@ const DetalleProducto = () => {
   const [caracteristicas, setCaracteristicas] = useState<CaracteristicaObjeto[]>([]);
   const [reseñas, setReseñas] = useState<Resenia[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // 1. NUEVO ESTADO: Controlar si mostramos todas las reseñas o solo 3
   const [mostrarTodasResenas, setMostrarTodasResenas] = useState(false);
+
+  // <CHANGE> Added states for carousel
+  const [imagenesAdicionales, setImagenesAdicionales] = useState<ImagenObjeto[]>([]);
+  const [paginaActual, setPaginaActual] = useState(0);
 
   const router = useRouter();
   const searchParams = useLocalSearchParams();
   const productoId = searchParams.id as string | undefined;
 
+  // <CHANGE> Restored original user loading logic from AsyncStorage
   useFocusEffect(
     useCallback(() => {
       const cargarUsuario = async () => {
@@ -120,6 +131,25 @@ const DetalleProducto = () => {
       setReseñas(mapped);
     }
   };
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [carouselWidth, setCarouselWidth] = useState(width);
+
+  // <CHANGE> Added function to fetch additional images
+  const fetchImagenes = async () => {
+    const { data, error } = await supabase
+      .from("imagenes_objeto")
+      .select("id, objeto_id, url, created_at")
+      .eq("objeto_id", productoId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error al obtener imágenes:", error.message);
+    } else {
+      setImagenesAdicionales(data || []);
+      setPaginaActual(0);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -153,6 +183,8 @@ const DetalleProducto = () => {
       }
 
       await fetchReseñas();
+      // <CHANGE> Call to fetch additional images
+      await fetchImagenes();
       setLoading(false);
     };
 
@@ -175,11 +207,15 @@ const DetalleProducto = () => {
   };
 
   const canRent = !!objeto && objeto.disponible === true;
-
-  // 2. LÓGICA: Cortar el array si no está expandido
   const resenasVisibles = mostrarTodasResenas ? reseñas : reseñas.slice(0, 3);
 
+  // <CHANGE> Calculate total images (portada + additional)
+  const totalImages = 1 + imagenesAdicionales.length;
+
+
+
   return (
+
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.profileSection}>
@@ -202,8 +238,70 @@ const DetalleProducto = () => {
         <ActivityIndicator size="large" color="#1E90FF" style={{ marginTop: 40 }} />
       ) : objeto ? (
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Datos del objeto */}
-          <Image source={{ uri: objeto.imagen_url || "https://placehold.co/300x200" }} style={styles.objetoImage} />
+          {/* ... existing code ... */}
+
+          <View
+            style={styles.carouselContainer}
+            onLayout={(e) => setCarouselWidth(e.nativeEvent.layout.width)}
+          >
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={carouselWidth}
+              decelerationRate="fast"
+              onScroll={(e) => {
+                const page = Math.round(
+                  e.nativeEvent.contentOffset.x / carouselWidth
+                );
+                setPaginaActual(page);
+              }}
+              scrollEventThrottle={16}
+            >
+              {/* Imagen principal */}
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                  setFullscreenImage(objeto.imagen_url);
+                  setFullscreenVisible(true);
+                }}
+              >
+                <Image
+                  source={{ uri: objeto.imagen_url }}
+                  style={[styles.objetoImage, { width: carouselWidth }]}
+                />
+              </TouchableOpacity>
+
+              {/* Imágenes adicionales */}
+              {imagenesAdicionales.map((img) => (
+                <TouchableOpacity
+                  key={img.id}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setFullscreenImage(img.url);
+                    setFullscreenVisible(true);
+                  }}
+                >
+                  <Image
+                    source={{ uri: img.url }}
+                    style={[styles.objetoImage, { width: carouselWidth }]}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {totalImages > 1 && (
+              <View style={styles.pageIndicator}>
+                <TextComponent
+                  text={`${paginaActual + 1} / ${totalImages}`}
+                  fontWeight="bold"
+                  textColor="#fff"
+                  textSize={14}
+                />
+              </View>
+            )}
+          </View>
+
 
           {objeto.categorias && (
             <View style={styles.categoryBadge}>
@@ -233,27 +331,27 @@ const DetalleProducto = () => {
             </View>
           )}
 
-          {/* Mapa con Leaflet */}
           {objeto.latitud && objeto.longitud && (
             <View style={styles.mapContainer}>
               <TextComponent text="📍 Ubicación del Producto" fontWeight="bold" textSize={18} textColor="#1E293B" />
               <View style={styles.mapBox}>
                 <WebView
                   originWhitelist={['*']}
-                  source={{ html: `
+                  source={{
+                    html: `
                     <!DOCTYPE html>
                     <html>
                     <head>
                       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
                       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
                       <style>
                         body { margin: 0; padding: 0; }
                         #map { height: 100vh; width: 100vw; }
                       </style>
                     </head>
                     <body>
-                      <div id="map"></div>
+                      <div id="map"><\/div>
                       <script>
                         var map = L.map('map', {zoomControl: false}).setView([${objeto.latitud}, ${objeto.longitud}], 15);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -287,13 +385,11 @@ const DetalleProducto = () => {
             <TextComponent text={canRent ? "🔑 Alquilar" : "⛔ No disponible"} fontWeight="bold" textSize={18} textColor="#fff" />
           </TouchableOpacity>
 
-          {/* Listado de Reseñas */}
           <TextComponent text="★ Reseñas" fontWeight="bold" textSize={20} textColor="#1E293B" style={{ marginTop: 20 }} />
           {reseñas.length === 0 ? (
             <TextComponent text="Aún no hay reseñas." textSize={14} textColor="#6B7280" />
           ) : (
             <>
-              {/* 3. Renderizar solo las visibles */}
               {resenasVisibles.map((r) => (
                 <View key={r.id} style={styles.reviewCard}>
                   <Image source={{ uri: r.usuarios?.foto_url || "https://placehold.co/60x60" }} style={styles.reviewerPhoto} />
@@ -306,29 +402,30 @@ const DetalleProducto = () => {
                 </View>
               ))}
 
-              {/* 4. Botón Ver Más (Solo si hay más de 3 reseñas) */}
               {reseñas.length > 3 && (
-                <TouchableOpacity 
-                  style={styles.viewMoreButton} 
+                <TouchableOpacity
+                  style={styles.viewMoreButton}
                   onPress={() => setMostrarTodasResenas(!mostrarTodasResenas)}
                 >
-                  <TextComponent 
-                    text={mostrarTodasResenas ? "Ver menos" : `Ver más (${reseñas.length - 3} más)`} 
-                    textColor="#1E90FF" 
-                    fontWeight="bold" 
+                  <TextComponent
+                    text={mostrarTodasResenas ? "Ver menos" : `Ver más (${reseñas.length - 3} más)`}
+                    textColor="#1E90FF"
+                    fontWeight="bold"
                     textSize={14}
                   />
                 </TouchableOpacity>
               )}
             </>
           )}
-          
-          <View style={{height: 50}} />
+
+          <View style={{ height: 50 }} />
         </ScrollView>
       ) : (
         <TextComponent text="No se encontró el objeto." textColor="red" textSize={16} />
       )}
+
     </View>
+
   );
 };
 
@@ -354,11 +451,30 @@ const styles = StyleSheet.create({
     borderRadius: 22.5,
     marginRight: 10,
   },
-  objetoImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
+  carouselContainer: {
+    position: "relative",
     marginBottom: 10,
+  },
+
+  objetoImage: {
+    height: 260,
+    borderRadius: 12,
+    resizeMode: "cover",
+  },
+
+
+  carouselControls: {
+    position: "absolute",
+    bottom: 8,
+    left: 10,
+    right: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
   },
   categoryBadge: {
     backgroundColor: "#EFF6FF",
@@ -435,10 +551,20 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginRight: 10,
   },
-  // Estilo para el botón "Ver más"
   viewMoreButton: {
     alignItems: 'center',
     paddingVertical: 10,
     marginTop: 5,
-  }
+  },
+  pageIndicator: {
+    position: "absolute",
+    bottom: 8,
+    alignSelf: "center",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+
 });
