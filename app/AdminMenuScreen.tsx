@@ -8,11 +8,11 @@ export default function AdminMenuScreen() {
 
   const menuItems = [
     {
-      title: "Agregar Nuevo Objeto",
-      subtitle: "Publicar un nuevo item en la biblioteca",
-      icon: "add-circle",
+      title: "Gestionar Inventario", // CAMBIO: Título más amplio
+      subtitle: "Ver, Editar y Borrar Objetos", // CAMBIO: Describe las nuevas funciones
+      icon: "list-circle", // CAMBIO: Icono de lista
       color: "#10B981", // Verde
-      route: "/AdminAgregarObjeto"
+      route: "/AdminListaObjetos" // CAMBIO: Redirige a la lista, no al formulario directo
     },
     {
       title: "Administrar Transacciones",
