@@ -3,10 +3,10 @@
 import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useFocusEffect, useRouter } from "expo-router"
+// IMPORTANTE: Asegúrate de importar 'Link' aquí
+import { useFocusEffect, useRouter, Link } from "expo-router"
 import { useCallback, useState } from "react"
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
-// IMPORTANTE: Importar el nuevo componente
 import ModalEditarPerfil from "@/components/ModalEditarPerfil"
 
 interface Usuario {
@@ -76,18 +76,14 @@ const Perfil = () => {
     }
   }
 
-  // Función actualizada para abrir el modal
+  // Función para abrir el modal
   const handleEditarPerfil = () => {
     setModalVisible(true)
   }
 
   // --- FUNCIONES DE NAVEGACIÓN ---
-  // (Se mantienen igual que tu código original)
   const handleHistorialAlquileres = () => router.push("/HistorialAlquileresScreen" as any)
   const handleHistorialCompras = () => router.push("/HistorialComprasScreen" as any)
-  const handleAdminTransacciones = () => router.push("/AdminTransaccionesScreen" as any)
-  const handleAdminDevoluciones = () => router.push("/AdminDevolucionesScreen" as any)
-  const handleAdminSolicitudes = () => router.push("/AdminSolicitudesScreen" as any)
   const handleRanking = () => router.push("/(tabs)/ranking")
   const irAHome = () => router.push("/(tabs)/HomeMenu/mainScreen")
 
@@ -172,7 +168,6 @@ const Perfil = () => {
             </View>
           </View>
 
-          {/* Siempre mostramos el campo teléfono, si está vacío se verá vacío */}
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <View style={styles.infoIconContainer}>
@@ -223,42 +218,23 @@ const Perfil = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
+        {/* --- MODIFICACIÓN: ÚNICO BOTÓN DE GESTIÓN PARA ADMINS --- */}
         {usuario.is_admin && (
-          <>
-            <TouchableOpacity style={styles.actionCard} onPress={handleAdminSolicitudes}>
+          <Link href="/AdminMenuScreen" asChild>
+            <TouchableOpacity style={styles.actionCard}>
               <View style={styles.actionIconContainer}>
-                <Ionicons name="notifications-outline" size={24} color="#8B5CF6" />
+                {/* Icono de grilla en color índigo para destacar */}
+                <Ionicons name="grid-outline" size={24} color="#4F46E5" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Solicitudes de Alquiler</Text>
-                <Text style={styles.actionSubtitle}>Aprobar o rechazar solicitudes</Text>
+                <Text style={styles.actionTitle}>Gestionar Plataforma</Text>
+                <Text style={styles.actionSubtitle}>Panel de administración</Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard} onPress={handleAdminTransacciones}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="shield-checkmark-outline" size={24} color="#10B981" />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Administrar Transacciones</Text>
-                <Text style={styles.actionSubtitle}>Gestionar pagos de tokens</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard} onPress={handleAdminDevoluciones}>
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="return-up-back-outline" size={24} color="#F59E0B" />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Administrar Devoluciones</Text>
-                <Text style={styles.actionSubtitle}>Ver códigos de retorno</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
-            </TouchableOpacity>
-          </>
+          </Link>
         )}
+        {/* -------------------------------------------------------- */}
 
         <TouchableOpacity style={styles.actionCard} onPress={handleRanking}>
           <View style={styles.actionIconContainer}>

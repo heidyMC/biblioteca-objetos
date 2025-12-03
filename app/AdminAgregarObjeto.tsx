@@ -1,0 +1,435 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  Image, 
+  Alert, 
+  StyleSheet, 
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Modal
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Picker } from '@react-native-picker/picker';
+import { supabase } from '../lib/supabase'; 
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function AdminAgregarObjeto() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('Guardando...');
+  
+  // --- ESTADOS DEL FORMULARIO PRINCIPAL ---
+  const [nombre, setNombre] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [precio, setPrecio] = useState('');
+  const [image, setImage] = useState<string | null>(null); // Portada
+  
+  const [categorias, setCategorias] = useState<any[]>([]);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string | null>(null);
+
+  // --- ESTADOS DE GALERÍA Y CARACTERÍSTICAS ---
+  const [imagenesGaleria, setImagenesGaleria] = useState<string[]>([]);
+  const [caracteristicas, setCaracteristicas] = useState<{nombre: string, valor: string}[]>([]);
+  
+  // Modal para características
+  const [modalVisible, setModalVisible] = useState(false);
+  const [tempCharNombre, setTempCharNombre] = useState('');
+  const [tempCharValor, setTempCharValor] = useState('');
+
+  useEffect(() => {
+    fetchCategorias();
+  }, []);
+
+  const fetchCategorias = async () => {
+    try {
+      const { data, error } = await supabase.from('categorias').select('id, nombre').order('nombre');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setCategorias(data);
+        setCategoriaSeleccionada(data[0].id);
+      }
+    } catch (error) {
+      console.log('Error cargando categorías:', error);
+    }
+  };
+
+  // --- LÓGICA DE IMÁGENES (UNIFICADA) ---
+
+  // 1. Menú para la Portada
+  const showCoverOptions = () => {
+    Alert.alert("Foto de Portada", "Selecciona una opción:", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "📷 Cámara", onPress: () => pickImage(true, false) }, // false = es portada (no galería)
+      { text: "🖼️ Galería", onPress: () => pickImage(false, false) }
+    ]);
+  };
+
+  // 2. Menú para la Galería (NUEVO)
+  const showGalleryOptions = () => {
+    Alert.alert("Galería de Imágenes", "¿Cómo quieres agregar fotos?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "📷 Tomar Foto", onPress: () => pickImage(true, true) }, // true = es para galería
+      { text: "🖼️ Abrir Galería", onPress: () => pickImage(false, true) }
+    ]);
+  };
+
+  // Función maestra para elegir imágenes
+  const pickImage = async (useCamera: boolean, isForGallery: boolean) => {
+    // Verificar permisos
+    if (useCamera) {
+        const { granted } = await ImagePicker.requestCameraPermissionsAsync();
+        if (!granted) return Alert.alert("Permiso", "Se necesita acceso a la cámara.");
+    } else {
+        const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!granted) return Alert.alert("Permiso", "Se necesita acceso a la galería.");
+    }
+
+    let result;
+    const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        // Si es para portada, permitimos editar. Si es para galería (múltiple), generalmente no se edita en lote.
+        // Pero si usas cámara para galería, podrías querer editar. Por simpleza, dejamos editar solo en portada.
+        allowsEditing: !isForGallery, 
+        aspect: [4, 3],
+        quality: 0.5,
+        allowsMultipleSelection: isForGallery && !useCamera, // Múltiple solo si es galería y NO es cámara
+        selectionLimit: isForGallery ? 5 : 1,
+    };
+
+    if (useCamera) {
+        result = await ImagePicker.launchCameraAsync(options);
+    } else {
+        result = await ImagePicker.launchImageLibraryAsync(options);
+    }
+
+    if (!result.canceled) {
+        if (isForGallery) {
+            // Agregar a la lista existente (append)
+            const newUris = result.assets.map(asset => asset.uri);
+            setImagenesGaleria([...imagenesGaleria, ...newUris]);
+        } else {
+            // Reemplazar la portada
+            setImage(result.assets[0].uri);
+        }
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    const newGallery = [...imagenesGaleria];
+    newGallery.splice(index, 1);
+    setImagenesGaleria(newGallery);
+  };
+
+  // --- LÓGICA DE CARACTERÍSTICAS ---
+  const addCharacteristic = () => {
+    if (tempCharNombre.trim() && tempCharValor.trim()) {
+        setCaracteristicas([...caracteristicas, { nombre: tempCharNombre, valor: tempCharValor }]);
+        setTempCharNombre('');
+        setTempCharValor('');
+        setModalVisible(false);
+    } else {
+        Alert.alert("Error", "Completa nombre y valor");
+    }
+  };
+
+  const removeCharacteristic = (index: number) => {
+    const newChars = [...caracteristicas];
+    newChars.splice(index, 1);
+    setCaracteristicas(newChars);
+  };
+
+  // --- SUBIDA DE ARCHIVOS ---
+  const uploadFileToSupabase = async (uri: string, bucket: string) => {
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const fileExt = uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    
+    const { error } = await supabase.storage.from(bucket).upload(fileName, arrayBuffer, {
+        contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+    });
+    if (error) throw error;
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return data.publicUrl;
+  };
+
+  // --- GUARDADO FINAL ---
+  const handleSubmit = async () => {
+    if (!nombre || !precio || !image || !categoriaSeleccionada) {
+      Alert.alert('Faltan datos', 'Completa los campos obligatorios y la foto de portada.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Subir Portada
+      setStatusMessage('Subiendo portada...');
+      const portadaUrl = await uploadFileToSupabase(image, 'objetos');
+
+      // 2. Crear Objeto en DB
+      setStatusMessage('Guardando información...');
+      const { data: objetoData, error: dbError } = await supabase
+        .from('objetos')
+        .insert([{
+            nombre,
+            descripcion,
+            precio_tokens_dia: parseInt(precio),
+            categoria_id: categoriaSeleccionada,
+            imagen_url: portadaUrl,
+            disponible: true,
+            latitud: -17.392077, // Coordenada Fija
+            longitud: -66.149714 // Coordenada Fija
+        }])
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+      const nuevoObjetoId = objetoData.id;
+
+      // 3. Subir Imágenes de Galería
+      if (imagenesGaleria.length > 0) {
+        setStatusMessage(`Subiendo ${imagenesGaleria.length} imágenes extra...`);
+        for (const uri of imagenesGaleria) {
+            const galeriaUrl = await uploadFileToSupabase(uri, 'objetos');
+            await supabase.from('imagenes_objeto').insert({
+                objeto_id: nuevoObjetoId,
+                url: galeriaUrl
+            });
+        }
+      }
+
+      // 4. Guardar Características
+      if (caracteristicas.length > 0) {
+        setStatusMessage('Guardando características...');
+        const charsToInsert = caracteristicas.map(c => ({
+            objeto_id: nuevoObjetoId,
+            nombre: c.nombre,
+            valor: c.valor
+        }));
+        await supabase.from('caracteristicas_objeto').insert(charsToInsert);
+      }
+
+      Alert.alert('¡Éxito!', 'Objeto publicado correctamente', [{ text: 'OK', onPress: () => router.back() }]);
+
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert('Error', error.message || 'Error al guardar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.mainContainer}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Nuevo Objeto</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          
+          {/* SECCIÓN 1: PORTADA */}
+          <Text style={styles.sectionLabel}>Foto de Portada (Solo 1)</Text>
+          <TouchableOpacity onPress={showCoverOptions} style={styles.coverContainer}>
+            {image ? (
+              <Image source={{ uri: image }} style={styles.coverImage} />
+            ) : (
+              <View style={styles.coverPlaceholder}>
+                <Ionicons name="camera" size={40} color="#6366F1" />
+                <Text style={styles.placeholderText}>Subir Portada</Text>
+              </View>
+            )}
+            {image && <View style={styles.editBadge}><Ionicons name="pencil" size={14} color="#fff" /></View>}
+          </TouchableOpacity>
+
+          <View style={styles.formCard}>
+            {/* CAMPOS DE TEXTO */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nombre *</Text>
+              <TextInput style={styles.input} value={nombre} onChangeText={setNombre} placeholder="Ej: PlayStation 5" />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Descripción</Text>
+              <TextInput style={[styles.input, styles.textArea]} value={descripcion} onChangeText={setDescripcion} placeholder="Detalles..." multiline />
+            </View>
+
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                <Text style={styles.label}>Precio (Tokens) *</Text>
+                <TextInput style={styles.input} value={precio} onChangeText={setPrecio} keyboardType="numeric" placeholder="0" />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <Text style={styles.label}>Categoría</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker selectedValue={categoriaSeleccionada} onValueChange={(v) => setCategoriaSeleccionada(v)} style={styles.picker}>
+                    {categorias.map((c) => <Picker.Item key={c.id} label={c.nombre} value={c.id} />)}
+                  </Picker>
+                </View>
+              </View>
+            </View>
+
+            {/* SECCIÓN 2: GALERÍA DE IMÁGENES */}
+            <View style={styles.divider} />
+            <View style={styles.sectionHeaderRow}>
+                <Text style={styles.subHeader}>Galería de Imágenes</Text>
+                <TouchableOpacity onPress={showGalleryOptions}>
+                    <Text style={styles.addLink}>+ Agregar Fotos</Text>
+                </TouchableOpacity>
+            </View>
+            
+            {imagenesGaleria.length === 0 ? (
+                <Text style={styles.emptyText}>No hay imágenes extra. Sube tu primera imagen.</Text>
+            ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+                    {imagenesGaleria.map((uri, index) => (
+                        <View key={index} style={styles.galleryItem}>
+                            <Image source={{ uri }} style={styles.galleryImg} />
+                            <TouchableOpacity onPress={() => removeGalleryImage(index)} style={styles.removeBtn}>
+                                <Ionicons name="close" size={12} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </ScrollView>
+            )}
+
+            {/* SECCIÓN 3: CARACTERÍSTICAS */}
+            <View style={styles.divider} />
+            <View style={styles.sectionHeaderRow}>
+                <Text style={styles.subHeader}>Características</Text>
+                <TouchableOpacity onPress={() => setModalVisible(true)}>
+                    <Text style={styles.addLink}>+ Agregar</Text>
+                </TouchableOpacity>
+            </View>
+
+            {caracteristicas.length === 0 ? (
+                <Text style={styles.emptyText}>No hay características añadidas.</Text>
+            ) : (
+                caracteristicas.map((char, index) => (
+                    <View key={index} style={styles.charRow}>
+                        <Text style={styles.charText}>
+                            <Text style={{fontWeight: 'bold'}}>{char.nombre}: </Text>{char.valor}
+                        </Text>
+                        <TouchableOpacity onPress={() => removeCharacteristic(index)}>
+                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                ))
+            )}
+
+            {/* BOTÓN PUBLICAR */}
+            <TouchableOpacity style={[styles.saveButton, loading && styles.disabledBtn]} onPress={handleSubmit} disabled={loading}>
+              {loading ? (
+                <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                    <ActivityIndicator color="#fff" style={{marginRight: 8}} />
+                    <Text style={styles.saveBtnText}>{statusMessage}</Text>
+                </View>
+              ) : (
+                <Text style={styles.saveBtnText}>Publicar Objeto</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* MODAL PARA AGREGAR CARACTERÍSTICA */}
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Nueva Característica</Text>
+                <TextInput style={styles.modalInput} placeholder="Nombre (Ej: Marca)" value={tempCharNombre} onChangeText={setTempCharNombre} />
+                <TextInput style={styles.modalInput} placeholder="Valor (Ej: Sony)" value={tempCharValor} onChangeText={setTempCharValor} />
+                <View style={styles.modalButtons}>
+                    <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalBtnCancel}>
+                        <Text style={styles.modalBtnTextCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={addCharacteristic} style={styles.modalBtnAdd}>
+                        <Text style={styles.modalBtnTextAdd}>Agregar</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  mainContainer: { flex: 1, backgroundColor: '#F3F4F6' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, backgroundColor: '#fff',
+    borderBottomWidth: 1, borderColor: '#E5E7EB',
+  },
+  backButton: { padding: 8, marginLeft: -8 },
+  title: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 20 },
+  sectionLabel: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 8, textAlign: 'center' },
+  
+  // Portada
+  coverContainer: { alignSelf: 'center', marginBottom: 20 },
+  coverImage: { width: 160, height: 160, borderRadius: 16, backgroundColor: '#fff' },
+  coverPlaceholder: { 
+    width: 160, height: 160, borderRadius: 16, backgroundColor: '#EEF2FF', 
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#C7D2FE', borderStyle: 'dashed' 
+  },
+  placeholderText: { color: '#6366F1', marginTop: 8, fontSize: 12, fontWeight: '600' },
+  editBadge: { 
+    position: 'absolute', bottom: -5, right: -5, backgroundColor: '#6366F1', 
+    width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' 
+  },
+
+  formCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowOpacity: 0.05, elevation: 2 },
+  inputGroup: { marginBottom: 16 },
+  label: { marginBottom: 6, fontWeight: '600', color: '#374151', fontSize: 14 },
+  input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', padding: 12, borderRadius: 10, fontSize: 15 },
+  textArea: { height: 80, textAlignVertical: 'top' },
+  row: { flexDirection: 'row' },
+  pickerContainer: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, height: 50, justifyContent: 'center', overflow: 'hidden' },
+  picker: { width: '100%', height: '100%' },
+
+  // Secciones Extra
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 15 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  subHeader: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+  addLink: { color: '#6366F1', fontWeight: '600', fontSize: 14 },
+  emptyText: { color: '#9CA3AF', fontSize: 13, fontStyle: 'italic', marginBottom: 5 },
+  
+  // Galería
+  galleryScroll: { flexDirection: 'row', marginBottom: 5 },
+  galleryItem: { marginRight: 10, position: 'relative' },
+  galleryImg: { width: 70, height: 70, borderRadius: 8 },
+  removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
+
+  // Características
+  charRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F3F4F6', padding: 10, borderRadius: 8, marginBottom: 8 },
+  charText: { fontSize: 14, color: '#374151' },
+
+  saveButton: { backgroundColor: '#10B981', paddingVertical: 16, borderRadius: 14, alignItems: 'center', marginTop: 20 },
+  disabledBtn: { backgroundColor: '#A7F3D0' },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { backgroundColor: '#fff', width: '80%', padding: 20, borderRadius: 16 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
+  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, marginBottom: 10 },
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  modalBtnCancel: { padding: 10 },
+  modalBtnTextCancel: { color: '#EF4444', fontWeight: '600' },
+  modalBtnAdd: { backgroundColor: '#6366F1', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+  modalBtnTextAdd: { color: '#fff', fontWeight: '600' },
+});

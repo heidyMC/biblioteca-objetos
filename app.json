@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.jhonny.prestafacil",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "La app necesita acceder a la cámara para tomar fotos de los objetos.",
+        "NSPhotoLibraryUsageDescription": "La app necesita acceder a tus fotos para subir imágenes de los objetos."
       }
     },
     "android": {
@@ -24,8 +26,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -46,7 +50,14 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La app necesita acceder a tus fotos para subir imágenes de los objetos.",
+          "cameraPermission": "La app necesita acceder a la cámara para tomar fotos de los objetos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
