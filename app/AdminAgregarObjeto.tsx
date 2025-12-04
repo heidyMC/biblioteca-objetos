@@ -37,10 +37,16 @@ export default function AdminAgregarObjeto() {
   const [imagenesGaleria, setImagenesGaleria] = useState<string[]>([]);
   const [caracteristicas, setCaracteristicas] = useState<{nombre: string, valor: string}[]>([]);
   
-  // Modal para características
+  // Modal Características
   const [modalVisible, setModalVisible] = useState(false);
   const [tempCharNombre, setTempCharNombre] = useState('');
   const [tempCharValor, setTempCharValor] = useState('');
+
+  // --- ESTADOS NUEVOS: MODAL CATEGORÍA ---
+  const [modalCatVisible, setModalCatVisible] = useState(false);
+  const [newCatNombre, setNewCatNombre] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+  const [creatingCat, setCreatingCat] = useState(false);
 
   useEffect(() => {
     fetchCategorias();
@@ -52,36 +58,62 @@ export default function AdminAgregarObjeto() {
       if (error) throw error;
       if (data && data.length > 0) {
         setCategorias(data);
-        setCategoriaSeleccionada(data[0].id);
+        if (!categoriaSeleccionada) {
+            setCategoriaSeleccionada(data[0].id);
+        }
       }
     } catch (error) {
       console.log('Error cargando categorías:', error);
     }
   };
 
-  // --- LÓGICA DE IMÁGENES (UNIFICADA) ---
+  // --- LÓGICA DE NUEVA CATEGORÍA ---
+  const handleCreateCategory = async () => {
+    if (!newCatNombre.trim()) {
+        Alert.alert("Error", "El nombre de la categoría es obligatorio");
+        return;
+    }
+    setCreatingCat(true);
+    try {
+        const { data, error } = await supabase.from('categorias')
+            .insert([{ nombre: newCatNombre.trim(), descripcion: newCatDesc.trim() }])
+            .select()
+            .single();
+        
+        if (error) throw error;
 
-  // 1. Menú para la Portada
+        await fetchCategorias(); 
+        if (data) setCategoriaSeleccionada(data.id);
+        
+        setModalCatVisible(false);
+        setNewCatNombre('');
+        setNewCatDesc('');
+        Alert.alert("Éxito", "Categoría creada y seleccionada");
+    } catch (error: any) {
+        Alert.alert("Error", error.message || "No se pudo crear la categoría");
+    } finally {
+        setCreatingCat(false);
+    }
+  };
+
+  // --- LÓGICA DE IMÁGENES ---
   const showCoverOptions = () => {
     Alert.alert("Foto de Portada", "Selecciona una opción:", [
       { text: "Cancelar", style: "cancel" },
-      { text: "📷 Cámara", onPress: () => pickImage(true, false) }, // false = es portada (no galería)
+      { text: "📷 Cámara", onPress: () => pickImage(true, false) },
       { text: "🖼️ Galería", onPress: () => pickImage(false, false) }
     ]);
   };
 
-  // 2. Menú para la Galería (NUEVO)
   const showGalleryOptions = () => {
     Alert.alert("Galería de Imágenes", "¿Cómo quieres agregar fotos?", [
       { text: "Cancelar", style: "cancel" },
-      { text: "📷 Tomar Foto", onPress: () => pickImage(true, true) }, // true = es para galería
+      { text: "📷 Tomar Foto", onPress: () => pickImage(true, true) },
       { text: "🖼️ Abrir Galería", onPress: () => pickImage(false, true) }
     ]);
   };
 
-  // Función maestra para elegir imágenes
   const pickImage = async (useCamera: boolean, isForGallery: boolean) => {
-    // Verificar permisos
     if (useCamera) {
         const { granted } = await ImagePicker.requestCameraPermissionsAsync();
         if (!granted) return Alert.alert("Permiso", "Se necesita acceso a la cámara.");
@@ -90,31 +122,22 @@ export default function AdminAgregarObjeto() {
         if (!granted) return Alert.alert("Permiso", "Se necesita acceso a la galería.");
     }
 
-    let result;
     const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        // Si es para portada, permitimos editar. Si es para galería (múltiple), generalmente no se edita en lote.
-        // Pero si usas cámara para galería, podrías querer editar. Por simpleza, dejamos editar solo en portada.
         allowsEditing: !isForGallery, 
         aspect: [4, 3],
         quality: 0.5,
-        allowsMultipleSelection: isForGallery && !useCamera, // Múltiple solo si es galería y NO es cámara
+        allowsMultipleSelection: isForGallery && !useCamera,
         selectionLimit: isForGallery ? 5 : 1,
     };
 
-    if (useCamera) {
-        result = await ImagePicker.launchCameraAsync(options);
-    } else {
-        result = await ImagePicker.launchImageLibraryAsync(options);
-    }
+    const result = useCamera ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
 
     if (!result.canceled) {
         if (isForGallery) {
-            // Agregar a la lista existente (append)
             const newUris = result.assets.map(asset => asset.uri);
             setImagenesGaleria([...imagenesGaleria, ...newUris]);
         } else {
-            // Reemplazar la portada
             setImage(result.assets[0].uri);
         }
     }
@@ -160,7 +183,7 @@ export default function AdminAgregarObjeto() {
     return data.publicUrl;
   };
 
-  // --- GUARDADO FINAL ---
+  // --- GUARDADO FINAL (ACTUALIZADO) ---
   const handleSubmit = async () => {
     if (!nombre || !precio || !image || !categoriaSeleccionada) {
       Alert.alert('Faltan datos', 'Completa los campos obligatorios y la foto de portada.');
@@ -169,11 +192,27 @@ export default function AdminAgregarObjeto() {
 
     setLoading(true);
     try {
-      // 1. Subir Portada
+      // 1. Obtener Ubicación Dinámica (la que tienen todos los objetos)
+      let latitudToSave = -17.392077; // Default si no hay objetos
+      let longitudToSave = -66.149714;
+
+      // Consultamos cualquier objeto existente para copiar su ubicación
+      const { data: existingObj } = await supabase
+        .from('objetos')
+        .select('latitud, longitud')
+        .limit(1)
+        .single();
+
+      if (existingObj && existingObj.latitud && existingObj.longitud) {
+        latitudToSave = existingObj.latitud;
+        longitudToSave = existingObj.longitud;
+      }
+
+      // 2. Subir Portada
       setStatusMessage('Subiendo portada...');
       const portadaUrl = await uploadFileToSupabase(image, 'objetos');
 
-      // 2. Crear Objeto en DB
+      // 3. Crear Objeto en DB
       setStatusMessage('Guardando información...');
       const { data: objetoData, error: dbError } = await supabase
         .from('objetos')
@@ -184,8 +223,8 @@ export default function AdminAgregarObjeto() {
             categoria_id: categoriaSeleccionada,
             imagen_url: portadaUrl,
             disponible: true,
-            latitud: -17.392077, // Coordenada Fija
-            longitud: -66.149714 // Coordenada Fija
+            latitud: latitudToSave,   // <-- USAMOS LA UBICACIÓN DINÁMICA
+            longitud: longitudToSave  // <-- USAMOS LA UBICACIÓN DINÁMICA
         }])
         .select()
         .single();
@@ -193,7 +232,7 @@ export default function AdminAgregarObjeto() {
       if (dbError) throw dbError;
       const nuevoObjetoId = objetoData.id;
 
-      // 3. Subir Imágenes de Galería
+      // 4. Subir Imágenes de Galería
       if (imagenesGaleria.length > 0) {
         setStatusMessage(`Subiendo ${imagenesGaleria.length} imágenes extra...`);
         for (const uri of imagenesGaleria) {
@@ -205,7 +244,7 @@ export default function AdminAgregarObjeto() {
         }
       }
 
-      // 4. Guardar Características
+      // 5. Guardar Características
       if (caracteristicas.length > 0) {
         setStatusMessage('Guardando características...');
         const charsToInsert = caracteristicas.map(c => ({
@@ -216,7 +255,7 @@ export default function AdminAgregarObjeto() {
         await supabase.from('caracteristicas_objeto').insert(charsToInsert);
       }
 
-      Alert.alert('¡Éxito!', 'Objeto publicado correctamente', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('¡Éxito!', 'Objeto publicado correctamente en la ubicación de la biblioteca.', [{ text: 'OK', onPress: () => router.back() }]);
 
     } catch (error: any) {
       console.error(error);
@@ -239,7 +278,6 @@ export default function AdminAgregarObjeto() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
           
-          {/* SECCIÓN 1: PORTADA */}
           <Text style={styles.sectionLabel}>Foto de Portada (Solo 1)</Text>
           <TouchableOpacity onPress={showCoverOptions} style={styles.coverContainer}>
             {image ? (
@@ -254,7 +292,6 @@ export default function AdminAgregarObjeto() {
           </TouchableOpacity>
 
           <View style={styles.formCard}>
-            {/* CAMPOS DE TEXTO */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Nombre *</Text>
               <TextInput style={styles.input} value={nombre} onChangeText={setNombre} placeholder="Ej: PlayStation 5" />
@@ -270,8 +307,14 @@ export default function AdminAgregarObjeto() {
                 <Text style={styles.label}>Precio (Tokens) *</Text>
                 <TextInput style={styles.input} value={precio} onChangeText={setPrecio} keyboardType="numeric" placeholder="0" />
               </View>
+              
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Categoría</Text>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <Text style={styles.label}>Categoría</Text>
+                    <TouchableOpacity onPress={() => setModalCatVisible(true)}>
+                        <Text style={styles.addCategoryLink}>+ Nueva</Text>
+                    </TouchableOpacity>
+                </View>
                 <View style={styles.pickerContainer}>
                   <Picker selectedValue={categoriaSeleccionada} onValueChange={(v) => setCategoriaSeleccionada(v)} style={styles.picker}>
                     {categorias.map((c) => <Picker.Item key={c.id} label={c.nombre} value={c.id} />)}
@@ -280,7 +323,6 @@ export default function AdminAgregarObjeto() {
               </View>
             </View>
 
-            {/* SECCIÓN 2: GALERÍA DE IMÁGENES */}
             <View style={styles.divider} />
             <View style={styles.sectionHeaderRow}>
                 <Text style={styles.subHeader}>Galería de Imágenes</Text>
@@ -290,7 +332,7 @@ export default function AdminAgregarObjeto() {
             </View>
             
             {imagenesGaleria.length === 0 ? (
-                <Text style={styles.emptyText}>No hay imágenes extra. Sube tu primera imagen.</Text>
+                <Text style={styles.emptyText}>No hay imágenes extra.</Text>
             ) : (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
                     {imagenesGaleria.map((uri, index) => (
@@ -304,7 +346,6 @@ export default function AdminAgregarObjeto() {
                 </ScrollView>
             )}
 
-            {/* SECCIÓN 3: CARACTERÍSTICAS */}
             <View style={styles.divider} />
             <View style={styles.sectionHeaderRow}>
                 <Text style={styles.subHeader}>Características</Text>
@@ -328,7 +369,6 @@ export default function AdminAgregarObjeto() {
                 ))
             )}
 
-            {/* BOTÓN PUBLICAR */}
             <TouchableOpacity style={[styles.saveButton, loading && styles.disabledBtn]} onPress={handleSubmit} disabled={loading}>
               {loading ? (
                 <View style={{flexDirection: 'row', alignItems: 'center'}}>
@@ -344,7 +384,7 @@ export default function AdminAgregarObjeto() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* MODAL PARA AGREGAR CARACTERÍSTICA */}
+      {/* MODAL 1: NUEVA CARACTERÍSTICA */}
       <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -362,6 +402,39 @@ export default function AdminAgregarObjeto() {
             </View>
         </View>
       </Modal>
+
+      {/* MODAL 2: NUEVA CATEGORÍA */}
+      <Modal animationType="fade" transparent={true} visible={modalCatVisible} onRequestClose={() => setModalCatVisible(false)}>
+        <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Crear Categoría</Text>
+                <Text style={{color:'#666', marginBottom: 10, fontSize: 13}}>Añade una nueva categoría al sistema.</Text>
+                
+                <TextInput 
+                    style={styles.modalInput} 
+                    placeholder="Nombre (Ej: Deportes)" 
+                    value={newCatNombre} 
+                    onChangeText={setNewCatNombre} 
+                />
+                <TextInput 
+                    style={styles.modalInput} 
+                    placeholder="Descripción (Opcional)" 
+                    value={newCatDesc} 
+                    onChangeText={setNewCatDesc} 
+                />
+                
+                <View style={styles.modalButtons}>
+                    <TouchableOpacity onPress={() => setModalCatVisible(false)} style={styles.modalBtnCancel}>
+                        <Text style={styles.modalBtnTextCancel}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleCreateCategory} style={styles.modalBtnAdd} disabled={creatingCat}>
+                        {creatingCat ? <ActivityIndicator color="#fff" size="small"/> : <Text style={styles.modalBtnTextAdd}>Crear</Text>}
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -379,7 +452,6 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20 },
   sectionLabel: { fontSize: 14, fontWeight: '600', color: '#6B7280', marginBottom: 8, textAlign: 'center' },
   
-  // Portada
   coverContainer: { alignSelf: 'center', marginBottom: 20 },
   coverImage: { width: 160, height: 160, borderRadius: 16, backgroundColor: '#fff' },
   coverPlaceholder: { 
@@ -395,26 +467,24 @@ const styles = StyleSheet.create({
   formCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, shadowOpacity: 0.05, elevation: 2 },
   inputGroup: { marginBottom: 16 },
   label: { marginBottom: 6, fontWeight: '600', color: '#374151', fontSize: 14 },
+  addCategoryLink: { color: '#6366F1', fontWeight: 'bold', fontSize: 12, marginBottom: 6 },
   input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', padding: 12, borderRadius: 10, fontSize: 15 },
   textArea: { height: 80, textAlignVertical: 'top' },
   row: { flexDirection: 'row' },
   pickerContainer: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, height: 50, justifyContent: 'center', overflow: 'hidden' },
   picker: { width: '100%', height: '100%' },
 
-  // Secciones Extra
   divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 15 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   subHeader: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
   addLink: { color: '#6366F1', fontWeight: '600', fontSize: 14 },
   emptyText: { color: '#9CA3AF', fontSize: 13, fontStyle: 'italic', marginBottom: 5 },
   
-  // Galería
   galleryScroll: { flexDirection: 'row', marginBottom: 5 },
   galleryItem: { marginRight: 10, position: 'relative' },
   galleryImg: { width: 70, height: 70, borderRadius: 8 },
   removeBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: '#EF4444', borderRadius: 10, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
 
-  // Características
   charRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F3F4F6', padding: 10, borderRadius: 8, marginBottom: 8 },
   charText: { fontSize: 14, color: '#374151' },
 
@@ -422,14 +492,13 @@ const styles = StyleSheet.create({
   disabledBtn: { backgroundColor: '#A7F3D0' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', width: '80%', padding: 20, borderRadius: 16 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center' },
-  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 10, marginBottom: 10 },
+  modalContent: { backgroundColor: '#fff', width: '85%', padding: 24, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center', color: '#1F2937' },
+  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16, backgroundColor: '#F9FAFB' },
   modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  modalBtnCancel: { padding: 10 },
-  modalBtnTextCancel: { color: '#EF4444', fontWeight: '600' },
-  modalBtnAdd: { backgroundColor: '#6366F1', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+  modalBtnCancel: { padding: 12, flex: 1, alignItems: 'center' },
+  modalBtnTextCancel: { color: '#6B7280', fontWeight: '600' },
+  modalBtnAdd: { backgroundColor: '#6366F1', paddingVertical: 12, borderRadius: 8, flex: 1, alignItems: 'center', marginLeft: 10 },
   modalBtnTextAdd: { color: '#fff', fontWeight: '600' },
 });
