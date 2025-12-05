@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     Image,
+    Modal,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -25,6 +26,7 @@ type Alquiler = {
   tokens_totales: number;
   estado: "activo" | "completado" | "extendido" | "pendiente_devolucion" | "pendiente_aprobacion" | "rechazado";
   codigo_devolucion?: string;
+  codigo_entrega?: string;
   created_at: string;
   objetos: {
     id: string;
@@ -39,8 +41,15 @@ export default function MisPedidosScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   
+  // Estado para almacenar el ID del usuario actual para la suscripción Realtime
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   // Estado para el código de devolución
   const [inputCode, setInputCode] = useState<{[key: string]: string}>({});
+
+  // Estados para el QR de entrega
+  const [qrVisible, setQrVisible] = useState(false);
+  const [selectedQrCode, setSelectedQrCode] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -48,12 +57,46 @@ export default function MisPedidosScreen() {
     }, [])
   );
 
-  const loadAlquileres = async () => {
-    setLoading(true);
+  // --- SUSCRIPCIÓN REALTIME ---
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    // Escuchar cambios (UPDATE) en la tabla alquileres para este usuario
+    const channel = supabase
+      .channel('pedidos-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'alquileres',
+          filter: `usuario_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          console.log("🔄 Cambio detectado en alquileres, recargando...");
+          loadAlquileres(false); // Recargar datos sin mostrar spinner de carga completa
+          
+          // Si el estado cambió a activo, cerramos el QR automáticamente
+          if (payload.new.estado === 'activo') {
+             setQrVisible(false);
+             Alert.alert("¡Entrega Confirmada!", "Tu alquiler ha comenzado.");
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
+  const loadAlquileres = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const userData = await AsyncStorage.getItem("usuario");
       if (!userData) return;
       const user = JSON.parse(userData);
+      setCurrentUserId(user.id); // Guardamos el ID para el useEffect
 
       const { data, error } = await supabase
         .from("alquileres")
@@ -151,7 +194,6 @@ export default function MisPedidosScreen() {
         const userData = await AsyncStorage.getItem("usuario");
         if (userData) {
             const user = JSON.parse(userData);
-            // Obtener saldo fresco
             const { data: userFresh } = await supabase.from('usuarios').select('tokens_disponibles').eq('id', user.id).single();
             
             if (userFresh) {
@@ -298,9 +340,28 @@ export default function MisPedidosScreen() {
                   </View>
                 )}
 
-                {/* OTROS ESTADOS: Mensajes informativos */}
+                {/* ESTADO PENDIENTE APROBACIÓN: MOSTRAR CÓDIGO/QR PARA RECOGER */}
                 {item.estado === 'pendiente_aprobacion' && (
-                    <Text style={styles.infoText}>Esperando aprobación del administrador...</Text>
+                    <View style={styles.pendingContainer}>
+                        <Text style={styles.infoText}>Solicitud enviada. Muestra este código para recoger:</Text>
+                        
+                        <View style={styles.pickupCodeRow}>
+                            <View style={styles.codeBadge}>
+                                <Text style={styles.codeBadgeText}>{item.codigo_entrega || "..."}</Text>
+                            </View>
+                            
+                            <TouchableOpacity 
+                                style={styles.qrButton}
+                                onPress={() => {
+                                    setSelectedQrCode(item.codigo_entrega || "");
+                                    setQrVisible(true);
+                                }}
+                            >
+                                <Ionicons name="qr-code" size={20} color="#fff" />
+                                <Text style={styles.qrButtonText}>Ver QR</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 )}
                 
                 {item.estado === 'completado' && (
@@ -315,6 +376,27 @@ export default function MisPedidosScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Modal para mostrar el QR */}
+      <Modal visible={qrVisible} transparent animationType="fade" onRequestClose={() => setQrVisible(false)}>
+        <View style={styles.qrModalOverlay}>
+            <View style={styles.qrModalContent}>
+                <TouchableOpacity style={styles.closeQr} onPress={() => setQrVisible(false)}>
+                    <Ionicons name="close" size={24} color="#333" />
+                </TouchableOpacity>
+                <Text style={styles.qrTitle}>Código de Entrega</Text>
+                <Text style={styles.qrCodeText}>{selectedQrCode}</Text>
+                {selectedQrCode ? (
+                    <Image 
+                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedQrCode}` }} 
+                        style={{ width: 250, height: 250 }} 
+                    />
+                ) : null}
+                <Text style={styles.qrHelper}>Muestra este código al administrador</Text>
+            </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -397,4 +479,18 @@ const styles = StyleSheet.create({
   completedText: { color: "#10B981", fontWeight: "600", fontSize: 13 },
   emptyState: { alignItems: "center", marginTop: 80 },
   emptyText: { marginTop: 12, color: "#94A3B8", fontSize: 16 },
+  
+  // Nuevos estilos para QR y Entrega
+  pendingContainer: { alignItems: 'center', marginTop: 10, gap: 8 },
+  pickupCodeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 5 },
+  codeBadge: { backgroundColor: '#F3F4F6', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
+  codeBadgeText: { fontSize: 18, fontWeight: 'bold', color: '#374151', letterSpacing: 2 },
+  qrButton: { flexDirection: 'row', backgroundColor: '#6366F1', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, alignItems: 'center', gap: 6 },
+  qrButtonText: { color: '#fff', fontWeight: '600' },
+  qrModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' },
+  qrModalContent: { backgroundColor: '#fff', padding: 30, borderRadius: 20, alignItems: 'center', width: '85%' },
+  closeQr: { position: 'absolute', top: 15, right: 15 },
+  qrTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 10, color: '#1F2937' },
+  qrCodeText: { fontSize: 24, fontWeight: '900', color: '#6366F1', letterSpacing: 4, marginBottom: 20 },
+  qrHelper: { marginTop: 20, color: '#6B7280', textAlign: 'center' }
 });

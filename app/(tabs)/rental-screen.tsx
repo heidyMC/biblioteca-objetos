@@ -106,7 +106,6 @@ export default function Confirmar() {
   }, [paramProducto, paramId]); 
 
   const checkExistingAlquiler = async (objId: string) => {
-    // Asegurarse de tener usuario
     if (!usuario) {
       const u = await AsyncStorage.getItem("usuario");
       if (!u) return;
@@ -120,13 +119,12 @@ export default function Confirmar() {
       .select("*")
       .eq("usuario_id", currentUser.id)
       .eq("objeto_id", objId)
-      .in("estado", ["activo", "extendido"]) // Solo alquileres activos pueden ser extendidos
+      .in("estado", ["activo", "extendido"])
       .limit(1)
       .single();
 
     if (!error && data) {
       setExistingAlquilerId(data.id);
-      // parsear fechas en Date y normalizar
       const inicio = toLocalDateOnly(new Date(data.fecha_inicio));
       const fin = toLocalDateOnly(new Date(data.fecha_fin));
       setFechaInicio(inicio);
@@ -161,7 +159,6 @@ export default function Confirmar() {
     setDias(newDias);
 
     if (existingAlquilerId) {
-      // Lógica solo para actualizar UI temporal, la confirmación real se hace en handleConfirmar
       Alert.alert("Fecha ajustada", "Confirma la extensión para aplicar los cambios.");
     }
     setModalVisible(false);
@@ -182,16 +179,19 @@ export default function Confirmar() {
     setFechaFin(f);
   };
 
+  // --- FUNCIÓN PARA GENERAR CÓDIGO ---
+  const generateCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  };
+
   const handleConfirmar = async () => {
     if (!usuario) return Alert.alert("Inicia sesión", "Debes iniciar sesión para confirmar el alquiler.");
     if (!producto) return Alert.alert("Error", "Producto no encontrado.");
     
-    // Si es nuevo alquiler, verificar disponibilidad. Si es extensión, ya lo tiene.
     if (!existingAlquilerId && !producto.disponible) {
         return Alert.alert("No disponible", "Este objeto ya no está disponible para alquilar.");
     }
 
-    // Normalizar y validar fechas ANTES de tocar la BD
     const inicioDate = toLocalDateOnly(fechaInicio);
     const finDate = toLocalDateOnly(fechaFin);
     const inicioStr = formatDate(inicioDate);
@@ -214,7 +214,6 @@ export default function Confirmar() {
     try {
       setConfirmando(true);
 
-      // Verificar disponibilidad actual en DB (evitar race condition) solo para nuevos
       if (!existingAlquilerId) {
           const { data: prodActual, error: prodErr } = await supabase
             .from("objetos")
@@ -234,8 +233,7 @@ export default function Confirmar() {
       }
 
       if (existingAlquilerId) {
-        // === EXTENSIÓN DE ALQUILER (MANTIENE ESTADO ACTIVO O EXTENDIDO) ===
-        // Actualizar alquiler existente (calcular diferencia de costo)
+        // === EXTENSIÓN DE ALQUILER ===
         const { data: existing, error: e1 } = await supabase
           .from("alquileres")
           .select("id, tokens_totales")
@@ -258,7 +256,7 @@ export default function Confirmar() {
             fecha_fin: finStr,
             dias_alquiler: diasCalc,
             tokens_totales: nuevoTotal,
-            estado: 'extendido' // Opcional: marcar como extendido
+            estado: 'extendido'
           })
           .eq("id", existingAlquilerId);
 
@@ -283,6 +281,9 @@ export default function Confirmar() {
       } else {
         // === NUEVO ALQUILER (SOLICITUD PENDIENTE) ===
         
+        // Generar código de entrega
+        const deliveryCode = generateCode();
+
         const payload = {
           usuario_id: usuario.id,
           objeto_id: producto.id,
@@ -290,7 +291,8 @@ export default function Confirmar() {
           fecha_fin: finStr,
           dias_alquiler: diasCalc,
           tokens_totales: nuevoTotal,
-          estado: "pendiente_aprobacion", // <--- CAMBIO CLAVE: Requiere aprobación
+          estado: "pendiente_aprobacion",
+          codigo_entrega: deliveryCode, // <-- CÓDIGO GENERADO AQUÍ
           created_at: new Date().toISOString(),
         };
 
@@ -312,11 +314,10 @@ export default function Confirmar() {
         if (updateError) {
           console.warn("Alquiler insertado, pero error reservando objeto:", updateError);
         } else {
-          // Sincronizar UI local
           setProducto((p) => (p && p.id === producto.id ? { ...p, disponible: false } : p));
         }
 
-        // 3. Descontar tokens al usuario (Pago por reserva)
+        // 3. Descontar tokens al usuario
         const nuevoSaldo = tokensUsuario - nuevoTotal;
         const { error: userUpdErr } = await supabase
           .from("usuarios")
@@ -331,7 +332,7 @@ export default function Confirmar() {
         
         Alert.alert(
             "Solicitud Enviada", 
-            "Tu solicitud ha sido enviada al administrador. Espera la aprobación para recoger el objeto."
+            "Tu solicitud ha sido enviada. Muestra el código QR o el texto al administrador para recoger tu objeto."
         );
       }
 
@@ -371,7 +372,6 @@ export default function Confirmar() {
         <View style={styles.card}>
           <View style={[styles.rowCentered, { alignItems: "center" }]}>
             <TextComponent text={`🗓️ Días de alquiler: ${dias}`} fontWeight="bold" textSize={16} />
-            {/* botón Cambiar fecha al lado */}
             <TouchableOpacity style={styles.changeDateBtn} onPress={openDateModal}>
               <TextComponent text="Cambiar fecha" textSize={13} />
             </TouchableOpacity>
@@ -391,7 +391,6 @@ export default function Confirmar() {
           </View>
         </View>
 
-        {/* summary y botones */}
         <View style={styles.card}>
           <TextComponent text="Resumen de Pago" fontWeight="bold" textSize={18} />
           <View style={styles.summaryRow}><TextComponent text="Precio por día" textSize={14} textColor="#6B7280" /><TextComponent text={`⛏️ ${precioPorDia}`} textSize={14} fontWeight="bold" /></View>
@@ -422,7 +421,6 @@ export default function Confirmar() {
             <TextComponent text="Cambiar fecha" fontWeight="bold" textSize={18} />
             <TextComponent text={`Hora de entrega: 8:00 a.m. - 5:00 p.m.`} textSize={13} textColor="#6B7280" style={{ marginTop: 8 }} />
 
-            {/* Fecha inicio */}
             <View style={{ marginTop: 12 }}>
               <TextComponent text="Fecha inicio" textSize={14} fontWeight="bold" />
               {Platform.OS === "android" ? (
@@ -441,7 +439,6 @@ export default function Confirmar() {
               )}
             </View>
 
-            {/* Fecha fin */}
             <View style={{ marginTop: 12 }}>
               <TextComponent text="Fecha fin" textSize={14} fontWeight="bold" />
               {Platform.OS === "android" ? (
@@ -478,43 +475,26 @@ export default function Confirmar() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F7F7FB", paddingHorizontal: 16, paddingTop: 18 },
   center: { justifyContent: "center", alignItems: "center" },
-
   card: { backgroundColor: "#fff", borderRadius: 12, padding: 14, marginTop: 12, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 3, borderWidth: 1, borderColor: "#F1F5F9" },
-
   productCard: { backgroundColor: "#fff", borderRadius: 12, padding: 12, marginTop: 12, borderWidth: 1, borderColor: "#F1F5F9", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-
   row: { flexDirection: "row", alignItems: "center" },
   rowCentered: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-
   img: { width: 68, height: 68, borderRadius: 10 },
-
   changeDateBtn: { marginLeft: 12, backgroundColor: "#EFF6FF", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-
   durationBox: { backgroundColor: "#fff", borderRadius: 12, paddingVertical: 18, paddingHorizontal: 28, marginHorizontal: 2, flexDirection: "row", alignItems: "center", justifyContent: "space-between", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-
   circleBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" },
   circleBtnText: { fontSize: 24, color: "#5B21B6", fontWeight: "700" },
-
   daysNumber: { fontSize: 28, fontWeight: "700", color: "#4C1D95" },
   daysLabel: { fontSize: 12, color: "#6B7280" },
-
   rangeRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 6 },
-
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 10, alignItems: "center" },
-
   totalBadge: { backgroundColor: "#F59E0B", paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20 },
   headerBar: { flexDirection: "row", alignItems: "center", paddingVertical: 10, marginBottom: 10 },
-
   warning: { marginTop: 12, backgroundColor: "#FEE2E2", padding: 10, borderRadius: 10, borderWidth: 1, borderColor: "#FECACA" },
-
   confirmButton: { paddingVertical: 14, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-
   obtainButton: { paddingVertical: 14, borderRadius: 14, alignItems: "center", justifyContent: "center" },
-
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" },
   modalCard: { width: "90%", backgroundColor: "#fff", borderRadius: 12, padding: 16, elevation: 6 },
-
   dateRow: { padding: 12, backgroundColor: "#F3F4F6", borderRadius: 8, marginTop: 8 },
-
   saveBtn: { backgroundColor: "#2563EB", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
 });
