@@ -1,10 +1,21 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AdminMenuScreen() {
   const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Lógica para recargar (simulada)
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Aquí podrías recargar datos si fuera necesario.
+    // Simulamos una espera de 1 segundo para dar feedback visual.
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
+  }, []);
 
   const menuItems = [
     {
@@ -84,7 +95,17 @@ export default function AdminMenuScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        refreshControl={
+            <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                colors={['#6366F1']} // Color del spinner de carga (Indigo)
+                tintColor="#6366F1" // Para iOS
+            />
+        }
+      >
         <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
         
         {menuItems.map((item, index) => (

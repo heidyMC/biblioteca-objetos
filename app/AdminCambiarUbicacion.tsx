@@ -10,113 +10,89 @@ export default function AdminCambiarUbicacion() {
   const [loading, setLoading] = useState(false);
   
   // Coordenadas iniciales (Cochabamba)
+  // Estas solo sirven para donde arranca el mapa
   const INITIAL_LAT = -17.392077;
   const INITIAL_LON = -66.149714;
 
-  // Estado para la ubicación seleccionada
-  const [selectedLocation, setSelectedLocation] = useState({
+  const [location, setLocation] = useState({
     latitude: INITIAL_LAT,
     longitude: INITIAL_LON,
   });
 
-  // --- HTML DEL MAPA LEAFLET ---
-  // Incluye lógica para mover el pin y enviar datos a React Native
+  // HTML DEL MAPA (Pin fijo en el centro)
   const leafletHtml = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>
         body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100vw; }
-        .instruction-box {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px;
-            font-family: sans-serif; font-size: 12px; z-index: 1000;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        
+        /* Pin Fijo en el Centro (CSS puro) */
+        #center-pin {
+          position: absolute;
+          top: 50%; left: 50%;
+          width: 40px; height: 40px;
+          margin-top: -40px; /* Ajuste para que la punta esté en el centro */
+          margin-left: -20px;
+          z-index: 999;
+          pointer-events: none; /* Permite arrastrar el mapa a través del pin */
         }
       </style>
     </head>
     <body>
       <div id="map"></div>
+      <img id="center-pin" src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png" />
+      
       <script>
-        // 1. Inicializar Mapa
-        var map = L.map('map').setView([${INITIAL_LAT}, ${INITIAL_LON}], 15);
+        var map = L.map('map').setView([${INITIAL_LAT}, ${INITIAL_LON}], 16);
 
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: 'OpenStreetMap'
         }).addTo(map);
 
-        // 2. Crear Icono Personalizado (Opcional, para que se vea mejor)
-        var blueIcon = new L.Icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
-        });
-
-        // 3. Agregar Marcador Arrastrable
-        var marker = L.marker([${INITIAL_LAT}, ${INITIAL_LON}], {
-            draggable: true,
-            icon: blueIcon
-        }).addTo(map);
-
-        marker.bindPopup("<b>Ubicación Central</b><br>Arrástrame para cambiar.").openPopup();
-
-        // 4. Función para enviar coordenadas a React Native
-        function sendLocation(lat, lng) {
+        function sendCenter() {
+            var center = map.getCenter();
             if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({ latitude: lat, longitude: lng }));
+                window.ReactNativeWebView.postMessage(JSON.stringify({ 
+                    lat: center.lat, 
+                    lng: center.lng 
+                }));
             }
         }
 
-        // 5. Evento: Al terminar de arrastrar
-        marker.on('dragend', function(e) {
-            var position = marker.getLatLng();
-            sendLocation(position.lat, position.lng);
-            map.panTo(position); // Centrar mapa en el nuevo punto
-        });
-
-        // 6. Evento: Al hacer click en el mapa (Mover marcador ahí también)
-        map.on('click', function(e) {
-            marker.setLatLng(e.latlng);
-            sendLocation(e.latlng.lat, e.latlng.lng);
-            map.panTo(e.latlng);
-        });
-
+        // Enviar coordenadas cada vez que el usuario termina de mover el mapa
+        map.on('moveend', sendCenter);
+        
+        // Enviar coordenadas iniciales
+        sendCenter();
       </script>
     </body>
     </html>
   `;
 
-  // --- MANEJO DE MENSAJES DEL WEBVIEW ---
   const handleWebViewMessage = (event: any) => {
     try {
         const data = JSON.parse(event.nativeEvent.data);
-        if (data.latitude && data.longitude) {
-            setSelectedLocation({
-                latitude: data.latitude,
-                longitude: data.longitude
-            });
+        if (data.lat && data.lng) {
+            setLocation({ latitude: data.lat, longitude: data.lng });
         }
     } catch (e) {
-        console.error("Error parseando coordenadas del mapa", e);
+        console.log("Error leyendo coordenadas", e);
     }
   };
 
-  // --- LÓGICA DE GUARDADO (IGUAL QUE ANTES) ---
-  const handleUpdateLocations = () => {
+  const handleUpdate = () => {
     Alert.alert(
-      "¿Cambiar ubicación de TODO?",
-      "Esto actualizará la latitud y longitud de TODOS los objetos en la base de datos a esta nueva ubicación. ¿Estás seguro?",
+      "Confirmar Cambio",
+      "¿Mover TODOS los objetos a esta nueva ubicación?",
       [
         { text: "Cancelar", style: "cancel" },
-        { text: "Sí, actualizar todo", onPress: performUpdate, style: 'destructive' }
+        { text: "Sí, mover", onPress: performUpdate }
       ]
     );
   };
@@ -124,28 +100,22 @@ export default function AdminCambiarUbicacion() {
   const performUpdate = async () => {
     setLoading(true);
     try {
-      // 1. Verificar ID de admin o similar si tienes RLS estricto, 
-      // pero aquí asumimos que el usuario ya está autenticado como admin.
-      
+      // Importante: Esto requiere la política UPDATE que creamos en el Paso 1
       const { error } = await supabase
         .from('objetos')
         .update({
-          latitud: selectedLocation.latitude,
-          longitud: selectedLocation.longitude
+          latitud: location.latitude,
+          longitud: location.longitude
         })
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Truco para afectar a todas las filas
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Filtro para afectar a todos
 
       if (error) throw error;
 
-      Alert.alert(
-        "¡Ubicación Actualizada!",
-        `Todos los objetos ahora están en:\nLat: ${selectedLocation.latitude.toFixed(5)}\nLon: ${selectedLocation.longitude.toFixed(5)}`,
-        [{ text: "OK", onPress: () => router.back() }]
-      );
-
+      Alert.alert("¡Éxito!", "Ubicación actualizada correctamente.", [
+        { text: "OK", onPress: () => router.back() }
+      ]);
     } catch (error: any) {
-      console.error(error);
-      Alert.alert("Error", "No se pudo actualizar: " + error.message);
+      Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
     }
@@ -153,49 +123,30 @@ export default function AdminCambiarUbicacion() {
 
   return (
     <View style={styles.container}>
-      {/* Header flotante */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Definir Ubicación Central</Text>
-          <Text style={styles.headerSubtitle}>Arrastra el marcador o toca el mapa</Text>
-        </View>
+        <Text style={styles.title}>Definir Ubicación</Text>
       </View>
 
-      {/* MAPA LEAFLET */}
-      <View style={styles.mapContainer}>
-        <WebView
-            originWhitelist={['*']}
-            source={{ html: leafletHtml }}
-            style={{ flex: 1 }}
-            onMessage={handleWebViewMessage} // Recibe las coordenadas del JS
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-        />
-      </View>
+      <WebView
+        originWhitelist={['*']}
+        source={{ html: leafletHtml }}
+        style={{ flex: 1 }}
+        onMessage={handleWebViewMessage}
+      />
 
-      {/* Panel inferior de acción */}
       <View style={styles.footer}>
-        <View style={styles.coordsContainer}>
-          <Text style={styles.coordLabel}>Lat: {selectedLocation.latitude.toFixed(6)}</Text>
-          <Text style={styles.coordLabel}>Lon: {selectedLocation.longitude.toFixed(6)}</Text>
-        </View>
-        
+        <Text style={styles.coords}>
+           Lat: {location.latitude.toFixed(5)} | Lon: {location.longitude.toFixed(5)}
+        </Text>
         <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.disabledButton]} 
-          onPress={handleUpdateLocations}
-          disabled={loading}
+            style={styles.btnSave} 
+            onPress={handleUpdate}
+            disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={20} color="#fff" style={{marginRight: 8}} />
-              <Text style={styles.saveButtonText}>Guardar Nueva Ubicación</Text>
-            </>
-          )}
+            {loading ? <ActivityIndicator color="#fff"/> : <Text style={styles.btnText}>Guardar Ubicación</Text>}
         </TouchableOpacity>
       </View>
     </View>
@@ -204,35 +155,17 @@ export default function AdminCambiarUbicacion() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  mapContainer: { flex: 1, backgroundColor: '#f0f0f0' }, // Contenedor para el WebView
-  
-  headerContainer: {
-    position: 'absolute', top: 50, left: 20, right: 20,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 16, padding: 15,
-    flexDirection: 'row', alignItems: 'center',
-    shadowColor: "#000", shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1, shadowRadius: 4, elevation: 5,
-    zIndex: 10
+  header: { 
+    position: 'absolute', top: 50, left: 20, zIndex: 10, 
+    flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: 'white', padding: 10, borderRadius: 10, elevation: 5 
   },
-  backButton: { padding: 5, marginRight: 10 },
-  headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
-  headerSubtitle: { fontSize: 12, color: '#6B7280' },
-
-  footer: {
-    position: 'absolute', bottom: 30, left: 20, right: 20,
-    backgroundColor: '#fff', borderRadius: 20, padding: 20,
-    shadowColor: "#000", shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.15, shadowRadius: 10, elevation: 6
+  backBtn: { marginRight: 10 },
+  title: { fontWeight: 'bold', fontSize: 16 },
+  footer: { 
+    padding: 20, backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, elevation: 10 
   },
-  coordsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  coordLabel: { fontSize: 12, color: '#6B7280', fontFamily: 'monospace' },
-  
-  saveButton: {
-    backgroundColor: '#4F46E5', borderRadius: 12, paddingVertical: 16,
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center'
-  },
-  disabledButton: { backgroundColor: '#A5B4FC' },
-  saveButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' }
+  coords: { textAlign: 'center', marginBottom: 10, color: '#666' },
+  btnSave: { backgroundColor: '#4F46E5', padding: 15, borderRadius: 10, alignItems: 'center' },
+  btnText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });
