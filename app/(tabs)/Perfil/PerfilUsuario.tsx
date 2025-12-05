@@ -1,12 +1,12 @@
 "use client"
 
+import ModalEditarPerfil from "@/components/ModalEditarPerfil"
 import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useFocusEffect, useRouter, Link } from "expo-router"
+import { Link, useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useState } from "react"
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
-import ModalEditarPerfil from "@/components/ModalEditarPerfil"
 
 interface Usuario {
   is_admin: any
@@ -79,10 +79,12 @@ const Perfil = () => {
     setModalVisible(true)
   }
 
+  // --- FUNCIONES DE NAVEGACIÓN ---
   const handleHistorialAlquileres = () => router.push("/HistorialAlquileresScreen" as any)
   const handleHistorialCompras = () => router.push("/HistorialComprasScreen" as any)
-  const handleFavoritos = () => router.push("/FavoritosScreen" as any) // Nuevo
+  const handleFavoritos = () => router.push("/FavoritosScreen" as any)
   const handleRanking = () => router.push("/(tabs)/ranking")
+  const handleSoporte = () => router.push("/SoporteScreen" as any) // <--- NUEVA RUTA
   const irAHome = () => router.push("/(tabs)/HomeMenu/mainScreen")
 
   const formatearFecha = (fecha: string) => {
@@ -216,7 +218,6 @@ const Perfil = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* --- NUEVO BOTÓN FAVORITOS --- */}
         <TouchableOpacity style={styles.actionCard} onPress={handleFavoritos}>
             <View style={styles.actionIconContainer}>
                 <Ionicons name="heart-outline" size={24} color="#EF4444" />
@@ -227,7 +228,6 @@ const Perfil = () => {
             </View>
             <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
-        {/* ----------------------------- */}
 
         {usuario.is_admin && (
           <Link href="/AdminMenuScreen" asChild>
@@ -254,6 +254,19 @@ const Perfil = () => {
           </View>
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
+
+        {/* --- NUEVO BOTÓN DE SOPORTE --- */}
+        <TouchableOpacity style={styles.actionCard} onPress={handleSoporte}>
+          <View style={[styles.actionIconContainer, { backgroundColor: "#FEE2E2" }]}>
+            <Ionicons name="help-buoy" size={24} color="#EF4444" />
+          </View>
+          <View style={styles.actionContent}>
+            <Text style={styles.actionTitle}>Ayuda y Soporte</Text>
+            <Text style={styles.actionSubtitle}>Reportar un problema</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+        </TouchableOpacity>
+        
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleCerrarSesion}>

@@ -21,15 +21,22 @@ export default function AdminMenuScreen() {
       color: "#EC4899", 
       route: "/AdminDashboardScreen"
     },
-    // --- NUEVA OPCIÓN ---
     {
       title: "Gestionar Usuarios",
       subtitle: "Suspender o desbloquear cuentas",
       icon: "people", 
-      color: "#EF4444", // Rojo
+      color: "#EF4444",
       route: "/AdminUsuariosScreen"
     },
-    // -------------------
+    // --- NUEVO BOTÓN DE SOPORTE (ADMIN) ---
+    {
+      title: "Soporte Técnico",
+      subtitle: "Ver reportes de usuarios",
+      icon: "headset", 
+      color: "#6366F1", // Indigo
+      route: "/AdminSoporteScreen"
+    },
+    // --------------------------------------
     {
       title: "Top Usuarios",
       subtitle: "Ver clientes con más alquileres",
