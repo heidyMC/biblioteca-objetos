@@ -24,11 +24,10 @@ export default function AdminSolicitudesScreen() {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // Estados para Validación/Escáner
   const [permission, requestPermission] = useCameraPermissions();
   const [verifyModalVisible, setVerifyModalVisible] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [mode, setMode] = useState<'scan' | 'manual'>('scan');
+  const [mode, setMode] = useState<'scan' | 'manual'>('scan'); 
   const [manualCode, setManualCode] = useState('');
   const [scanned, setScanned] = useState(false);
 
@@ -54,41 +53,39 @@ export default function AdminSolicitudesScreen() {
   };
 
   const handleReject = async (item: any) => {
-    setProcessingId(item.id);
-    try {
-      // 1. Cambiar estado a rechazado
-      const { error: rentalError } = await supabase
-        .from('alquileres')
-        .update({ estado: 'rechazado' })
-        .eq('id', item.id);
-      if (rentalError) throw rentalError;
+     setProcessingId(item.id);
+     try {
+       const { error: rentalError } = await supabase.from('alquileres').update({ estado: 'rechazado' }).eq('id', item.id);
+       if (rentalError) throw rentalError;
+       
+       await supabase.from('objetos').update({ disponible: true }).eq('id', item.objeto_id);
+       
+       const { data: userFresh } = await supabase.from('usuarios').select('tokens_disponibles').eq('id', item.usuario_id).single();
+       const currentTokens = userFresh?.tokens_disponibles || 0;
+       await supabase.from('usuarios').update({ tokens_disponibles: currentTokens + item.tokens_totales }).eq('id', item.usuario_id);
 
-      // 2. Liberar el objeto
-      await supabase.from('objetos').update({ disponible: true }).eq('id', item.objeto_id);
+       // --- ENVIAR NOTIFICACIÓN DE RECHAZO ---
+       await supabase.from('notificaciones').insert({
+         usuario_id: item.usuario_id,
+         titulo: 'Solicitud Rechazada',
+         mensaje: `Tu solicitud de alquiler para "${item.objetos?.nombre}" fue rechazada. Se te reembolsaron ${item.tokens_totales} tokens.`,
+         tipo: 'error'
+       });
 
-      // 3. Reembolsar tokens al usuario
-      const { data: userFresh } = await supabase.from('usuarios').select('tokens_disponibles').eq('id', item.usuario_id).single();
-      const currentTokens = userFresh?.tokens_disponibles || 0;
-      
-      await supabase
-        .from('usuarios')
-        .update({ tokens_disponibles: currentTokens + item.tokens_totales })
-        .eq('id', item.usuario_id);
-
-      Alert.alert("Rechazado", "Solicitud rechazada y tokens reembolsados.");
-      loadRequests();
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setProcessingId(null);
-    }
+       Alert.alert("Rechazado", "Solicitud rechazada y tokens reembolsados.");
+       loadRequests();
+     } catch (e: any) {
+       Alert.alert("Error", e.message);
+     } finally {
+       setProcessingId(null);
+     }
   };
 
   const openVerification = async (item: any) => {
     setSelectedRequest(item);
     setScanned(false);
     setManualCode('');
-    setMode('scan');
+    setMode('scan'); 
     setVerifyModalVisible(true);
     
     if (!permission?.granted) {
@@ -108,6 +105,15 @@ export default function AdminSolicitudesScreen() {
         .eq('id', selectedRequest.id);
 
       if (error) throw error;
+
+      // --- ENVIAR NOTIFICACIÓN DE APROBACIÓN ---
+      await supabase.from('notificaciones').insert({
+         usuario_id: selectedRequest.usuario_id,
+         titulo: '¡Alquiler Activo!',
+         mensaje: `Has recogido "${selectedRequest.objetos?.nombre}". Tu alquiler ha comenzado.`,
+         tipo: 'success'
+      });
+
       Alert.alert("¡Entrega Exitosa!", "El alquiler ahora está activo.");
       loadRequests();
     } catch (e: any) {
@@ -120,7 +126,6 @@ export default function AdminSolicitudesScreen() {
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned || !selectedRequest) return;
-    
     if (data === selectedRequest.codigo_entrega) {
         setScanned(true);
         Alert.alert("Código Correcto", "QR verificado exitosamente.", [
@@ -152,10 +157,7 @@ export default function AdminSolicitudesScreen() {
         <View style={{width: 40}} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadRequests} />}
-      >
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={loadRequests} />}>
         {requests.length === 0 && !loading ? (
           <View style={styles.emptyState}>
             <Ionicons name="file-tray-outline" size={64} color="#CBD5E1" />
@@ -169,7 +171,7 @@ export default function AdminSolicitudesScreen() {
                 <View style={{flex: 1, marginLeft: 12}}>
                   <Text style={styles.objName}>{item.objetos?.nombre}</Text>
                   <Text style={styles.userName}>👤 {item.usuarios?.nombre}</Text>
-                  <Text style={styles.details}>📅 {item.dias_alquiler} días • 💰 {item.tokens_totales} tokens</Text>
+                  <Text style={styles.details}>📅 {item.dias_alquiler} días • 💰 {item.tokens_totales}</Text>
                 </View>
               </View>
 
@@ -198,7 +200,7 @@ export default function AdminSolicitudesScreen() {
         )}
       </ScrollView>
 
-      {/* MODAL DE VALIDACIÓN */}
+      {/* Modal de Validación */}
       <Modal visible={verifyModalVisible} animationType="slide" transparent>
         <View style={styles.modalBg}>
             <View style={styles.modalContainer}>
@@ -209,7 +211,6 @@ export default function AdminSolicitudesScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* Tabs */}
                 <View style={styles.tabs}>
                     <TouchableOpacity onPress={() => setMode('scan')} style={[styles.tab, mode === 'scan' && styles.activeTab]}>
                         <Ionicons name="qr-code-outline" size={20} color={mode === 'scan' ? '#6366F1' : '#666'} />
@@ -288,8 +289,6 @@ const styles = StyleSheet.create({
   btnTextApprove: { color: "white", fontWeight: "bold" },
   emptyState: { alignItems: 'center', marginTop: 100 },
   emptyText: { marginTop: 16, color: "#94A3B8" },
-  
-  // Modal Estilos
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContainer: { backgroundColor: '#fff', height: '70%', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },

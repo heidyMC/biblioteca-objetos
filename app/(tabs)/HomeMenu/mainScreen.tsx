@@ -15,6 +15,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Text
 } from "react-native"
 
 interface Usuario {
@@ -51,11 +52,15 @@ const MainScreen = () => {
   const [search, setSearch] = useState("")
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const [messageIndex, setMessageIndex] = useState(0)
+  
+  // ESTADO PARA EL BADGE DE NOTIFICACIONES
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const router = useRouter()
 
   const heroMessages = [
     "Accede a miles de objetos usando tokens. Ahorra dinero y espacio.",
-    "Bibleoteca de objetos dinero con nostros  y ayuda al planeta.",
+    "Biblioteca de objetos: ahorra dinero con nosotros y ayuda al planeta.",
     "Alquila sin compromiso a largo plazo. Flexibilidad total.",
     "Gana tokens con reseñas y devoluciones a tiempo.",
   ]
@@ -65,50 +70,81 @@ const MainScreen = () => {
       const cargarUsuario = async () => {
         try {
           const userData = await AsyncStorage.getItem("usuario")
-          if (userData) setUsuario(JSON.parse(userData))
+          if (userData) {
+            const user = JSON.parse(userData);
+            setUsuario(user);
+            fetchUnreadNotifications(user.id);
+          }
           else setUsuario(null)
         } catch (error) {
           console.error("Error cargando usuario:", error)
         }
       }
-
       cargarUsuario()
     }, []),
   )
 
+  // CARGA DE PRODUCTOS
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
         setLoading(true)
-        const { data: productosData, error: errorProductos } = await supabase.from("objetos").select(`
-            *,
-            categorias ( nombre )
-          `)
-
-        if (errorProductos) {
-          console.error("Error cargando productos:", errorProductos.message)
-        } else {
-          setProductos(productosData || [])
-        }
+        const { data: productosData, error: errorProductos } = await supabase.from("objetos").select(`*, categorias ( nombre )`)
+        if (!errorProductos) setProductos(productosData || [])
+        
         const { data: categoriasData, error: errorCategorias } = await supabase.from("categorias").select("id, nombre")
-
-        if (errorCategorias) {
-          console.error("Error cargando categorías:", errorCategorias.message)
-        } else {
-          setCategorias(categoriasData || [])
-        }
+        if (!errorCategorias) setCategorias(categoriasData || [])
+        
         setLoading(false)
       }
-
       fetchData()
     }, []),
   )
+
+  // LÓGICA DEL BADGE DE NOTIFICACIONES (Realtime)
+  useEffect(() => {
+    if (!usuario?.id) return;
+
+    // 1. Carga inicial del conteo
+    fetchUnreadNotifications(usuario.id);
+
+    // 2. Suscripción a cambios
+    const channel = supabase
+      .channel('main-notifications-badge')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Escuchar INSERT (nueva) y UPDATE (leída)
+          schema: 'public',
+          table: 'notificaciones',
+          filter: `usuario_id=eq.${usuario.id}`,
+        },
+        () => {
+          // Si algo cambia, volvemos a contar
+          fetchUnreadNotifications(usuario.id);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [usuario?.id]);
+
+  const fetchUnreadNotifications = async (userId: string) => {
+    const { count, error } = await supabase
+      .from('notificaciones')
+      .select('*', { count: 'exact', head: true })
+      .eq('usuario_id', userId)
+      .eq('leido', false);
+    
+    if (!error) {
+      setUnreadCount(count || 0);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % heroMessages.length)
     }, 8000)
-
     return () => clearInterval(interval)
   }, [heroMessages.length])
 
@@ -128,6 +164,23 @@ const MainScreen = () => {
       <View style={styles.headerFixed}>
         <Image source={require("@/assets/images/prestafacil-icon.jpg")} style={styles.logo} resizeMode="contain" />
         <View style={styles.profileContainer}>
+          
+          {/* BOTÓN DE NOTIFICACIONES CON BADGE */}
+          <TouchableOpacity 
+            style={styles.notifButton}
+            onPress={() => router.push('/NotificacionesScreen' as any)}
+          >
+            <Ionicons name="notifications-outline" size={24} color="#333" />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {/* ----------------------------------- */}
+
           <View style={styles.tokensBadge}>
             <TextComponent
               text={`💰 ${usuario?.tokens_disponibles ?? 0}`}
@@ -456,6 +509,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
+  // ESTILOS DEL BOTÓN DE NOTIFICACIÓN
+  notifButton: {
+    padding: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    marginRight: 5,
+    position: 'relative'
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#fff'
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold'
+  },
+  // -----------------------------
   profileButton: {},
   profileImageHeader: {
     width: 45,

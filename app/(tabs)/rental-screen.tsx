@@ -179,6 +179,7 @@ export default function Confirmar() {
     setFechaFin(f);
   };
 
+  // Función para generar código aleatorio
   const generateCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
@@ -294,6 +295,7 @@ export default function Confirmar() {
       } else {
         // === NUEVO ALQUILER ===
         
+        // Generar código de entrega
         const deliveryCode = generateCode();
 
         const payload = {
@@ -304,7 +306,7 @@ export default function Confirmar() {
           dias_alquiler: diasCalc,
           tokens_totales: nuevoTotal,
           estado: "pendiente_aprobacion",
-          codigo_entrega: deliveryCode,
+          codigo_entrega: deliveryCode, // <-- CÓDIGO PARA QR/PICKUP
           created_at: new Date().toISOString(),
         };
 
@@ -313,9 +315,11 @@ export default function Confirmar() {
           return Alert.alert("Tokens insuficientes", `Te faltan ${nuevoTotal - tokensUsuario} tokens.`);
         }
 
+        // 1. Insertar alquiler
         const { error: insErr } = await supabase.from("alquileres").insert([payload]);
         if (insErr) throw insErr;
 
+        // 2. Reservar objeto
         const { error: updateError } = await supabase
           .from("objetos")
           .update({ disponible: false })
@@ -327,6 +331,7 @@ export default function Confirmar() {
           setProducto((p) => (p && p.id === producto.id ? { ...p, disponible: false } : p));
         }
 
+        // 3. Cobrar tokens
         const nuevoSaldo = tokensUsuario - nuevoTotal;
         const { error: userUpdErr } = await supabase
           .from("usuarios")
@@ -339,6 +344,28 @@ export default function Confirmar() {
         setUsuario(usuarioActualizado);
         await AsyncStorage.setItem("usuario", JSON.stringify(usuarioActualizado));
         
+        // 4. NOTIFICAR AL ADMINISTRADOR
+        try {
+            // Buscar todos los administradores
+            const { data: admins } = await supabase
+                .from('usuarios')
+                .select('id')
+                .eq('is_admin', true);
+            
+            if (admins && admins.length > 0) {
+                const notificacionesAdmins = admins.map(admin => ({
+                    usuario_id: admin.id,
+                    titulo: 'Nueva Solicitud',
+                    mensaje: `${usuario.nombre} ha solicitado alquilar "${producto.nombre}". Revisa las solicitudes pendientes.`,
+                    tipo: 'info'
+                }));
+                
+                await supabase.from('notificaciones').insert(notificacionesAdmins);
+            }
+        } catch (e) {
+            console.log("Error notificando admins (no crítico):", e);
+        }
+
         Alert.alert(
             "Solicitud Enviada", 
             "Tu solicitud ha sido enviada. Muestra el código QR o el texto al administrador para recoger tu objeto."
