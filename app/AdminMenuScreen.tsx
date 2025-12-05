@@ -14,6 +14,15 @@ export default function AdminMenuScreen() {
       color: "#10B981", 
       route: "/AdminListaObjetos"
     },
+    // --- NUEVO DASHBOARD ---
+    {
+      title: "Estadísticas & Reportes",
+      subtitle: "Ganancias, Top Objetos e Inactivos",
+      icon: "pie-chart", 
+      color: "#EC4899", // Rosa
+      route: "/AdminDashboardScreen"
+    },
+    // -----------------------
     {
       title: "Top Usuarios",
       subtitle: "Ver clientes con más alquileres",
@@ -42,12 +51,11 @@ export default function AdminMenuScreen() {
       color: "#EF4444",
       route: "/AdminDevolucionesScreen"
     },
-    // --- NUEVA OPCIÓN ---
     {
       title: "Ubicación de Biblioteca",
       subtitle: "Cambiar ubicación de todos los objetos",
       icon: "map",
-      color: "#6366F1", // Color Índigo
+      color: "#6366F1", // Índigo
       route: "/AdminCambiarUbicacion"
     },
   ];
@@ -82,7 +90,6 @@ export default function AdminMenuScreen() {
           </TouchableOpacity>
         ))}
         
-        {/* Espacio extra al final */}
         <View style={{height: 40}} />
       </ScrollView>
     </View>
