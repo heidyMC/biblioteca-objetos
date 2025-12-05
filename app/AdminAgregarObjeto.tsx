@@ -58,7 +58,6 @@ export default function AdminAgregarObjeto() {
       if (error) throw error;
       if (data && data.length > 0) {
         setCategorias(data);
-        // Solo autoseleccionar si no hay nada seleccionado previamente
         if (!categoriaSeleccionada) {
             setCategoriaSeleccionada(data[0].id);
         }
@@ -83,7 +82,6 @@ export default function AdminAgregarObjeto() {
         
         if (error) throw error;
 
-        // Recargar lista y seleccionar la nueva
         await fetchCategorias(); 
         if (data) setCategoriaSeleccionada(data.id);
         
@@ -185,7 +183,7 @@ export default function AdminAgregarObjeto() {
     return data.publicUrl;
   };
 
-  // --- GUARDADO FINAL ---
+  // --- GUARDADO FINAL (ACTUALIZADO) ---
   const handleSubmit = async () => {
     if (!nombre || !precio || !image || !categoriaSeleccionada) {
       Alert.alert('Faltan datos', 'Completa los campos obligatorios y la foto de portada.');
@@ -194,9 +192,27 @@ export default function AdminAgregarObjeto() {
 
     setLoading(true);
     try {
+      // 1. Obtener Ubicación Dinámica (la que tienen todos los objetos)
+      let latitudToSave = -17.392077; // Default si no hay objetos
+      let longitudToSave = -66.149714;
+
+      // Consultamos cualquier objeto existente para copiar su ubicación
+      const { data: existingObj } = await supabase
+        .from('objetos')
+        .select('latitud, longitud')
+        .limit(1)
+        .single();
+
+      if (existingObj && existingObj.latitud && existingObj.longitud) {
+        latitudToSave = existingObj.latitud;
+        longitudToSave = existingObj.longitud;
+      }
+
+      // 2. Subir Portada
       setStatusMessage('Subiendo portada...');
       const portadaUrl = await uploadFileToSupabase(image, 'objetos');
 
+      // 3. Crear Objeto en DB
       setStatusMessage('Guardando información...');
       const { data: objetoData, error: dbError } = await supabase
         .from('objetos')
@@ -207,8 +223,8 @@ export default function AdminAgregarObjeto() {
             categoria_id: categoriaSeleccionada,
             imagen_url: portadaUrl,
             disponible: true,
-            latitud: -17.392077,
-            longitud: -66.149714
+            latitud: latitudToSave,   // <-- USAMOS LA UBICACIÓN DINÁMICA
+            longitud: longitudToSave  // <-- USAMOS LA UBICACIÓN DINÁMICA
         }])
         .select()
         .single();
@@ -216,6 +232,7 @@ export default function AdminAgregarObjeto() {
       if (dbError) throw dbError;
       const nuevoObjetoId = objetoData.id;
 
+      // 4. Subir Imágenes de Galería
       if (imagenesGaleria.length > 0) {
         setStatusMessage(`Subiendo ${imagenesGaleria.length} imágenes extra...`);
         for (const uri of imagenesGaleria) {
@@ -227,6 +244,7 @@ export default function AdminAgregarObjeto() {
         }
       }
 
+      // 5. Guardar Características
       if (caracteristicas.length > 0) {
         setStatusMessage('Guardando características...');
         const charsToInsert = caracteristicas.map(c => ({
@@ -237,7 +255,7 @@ export default function AdminAgregarObjeto() {
         await supabase.from('caracteristicas_objeto').insert(charsToInsert);
       }
 
-      Alert.alert('¡Éxito!', 'Objeto publicado correctamente', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('¡Éxito!', 'Objeto publicado correctamente en la ubicación de la biblioteca.', [{ text: 'OK', onPress: () => router.back() }]);
 
     } catch (error: any) {
       console.error(error);
@@ -290,7 +308,6 @@ export default function AdminAgregarObjeto() {
                 <TextInput style={styles.input} value={precio} onChangeText={setPrecio} keyboardType="numeric" placeholder="0" />
               </View>
               
-              {/* SELECTOR DE CATEGORÍA CON BOTÓN DE AGREGAR */}
               <View style={[styles.inputGroup, { flex: 1 }]}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                     <Text style={styles.label}>Categoría</Text>

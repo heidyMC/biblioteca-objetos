@@ -8,34 +8,48 @@ export default function AdminMenuScreen() {
 
   const menuItems = [
     {
-      title: "Gestionar Inventario", // CAMBIO: Título más amplio
-      subtitle: "Ver, Editar y Borrar Objetos", // CAMBIO: Describe las nuevas funciones
-      icon: "list-circle", // CAMBIO: Icono de lista
-      color: "#10B981", // Verde
-      route: "/AdminListaObjetos" // CAMBIO: Redirige a la lista, no al formulario directo
+      title: "Gestionar Inventario",
+      subtitle: "Ver, Editar y Borrar Objetos",
+      icon: "list-circle",
+      color: "#10B981", 
+      route: "/AdminListaObjetos"
+    },
+    {
+      title: "Top Usuarios",
+      subtitle: "Ver clientes con más alquileres",
+      icon: "podium", 
+      color: "#F59E0B", 
+      route: "/AdminTopUsuariosScreen"
     },
     {
       title: "Administrar Transacciones",
       subtitle: "Gestionar pagos y movimientos",
       icon: "card",
-      color: "#3B82F6", // Azul
+      color: "#3B82F6",
       route: "/AdminTransaccionesScreen"
     },
     {
       title: "Solicitudes de Alquiler",
       subtitle: "Aprobar o rechazar préstamos",
       icon: "notifications",
-      color: "#8B5CF6", // Violeta
+      color: "#8B5CF6",
       route: "/AdminSolicitudesScreen"
     },
     {
       title: "Devoluciones",
       subtitle: "Gestionar retornos de objetos",
       icon: "return-up-back",
-      color: "#F59E0B", // Naranja
+      color: "#EF4444",
       route: "/AdminDevolucionesScreen"
     },
-    // Aquí puedes añadir más opciones en el futuro
+    // --- NUEVA OPCIÓN ---
+    {
+      title: "Ubicación de Biblioteca",
+      subtitle: "Cambiar ubicación de todos los objetos",
+      icon: "map",
+      color: "#6366F1", // Color Índigo
+      route: "/AdminCambiarUbicacion"
+    },
   ];
 
   return (
@@ -67,6 +81,9 @@ export default function AdminMenuScreen() {
             <Ionicons name="chevron-forward" size={20} color="#CCC" />
           </TouchableOpacity>
         ))}
+        
+        {/* Espacio extra al final */}
+        <View style={{height: 40}} />
       </ScrollView>
     </View>
   );
