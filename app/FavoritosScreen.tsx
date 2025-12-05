@@ -72,7 +72,11 @@ export default function FavoritosScreen() {
     return (
       <TouchableOpacity 
         style={styles.card}
-        onPress={() => router.push({ pathname: '/(tabs)/HomeMenu/detalleProducto', params: { id: obj.id } })}
+        onPress={() => router.push({ 
+            // CORRECCIÓN IMPORTANTE: Ruta absoluta
+            pathname: '/(tabs)/HomeMenu/detalleProducto', 
+            params: { id: obj.id } 
+        })}
       >
         <Image source={{ uri: obj.imagen_url }} style={styles.image} />
         <View style={styles.info}>

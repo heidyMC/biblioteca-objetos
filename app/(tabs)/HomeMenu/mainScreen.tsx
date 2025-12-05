@@ -231,6 +231,7 @@ const MainScreen = () => {
         <View style={styles.profileContainer}>
           
           {/* --- NUEVO: Botón "Cómo Llegar" --- */}
+          {/* CORRECCIÓN AQUÍ: Se elimina el uso de 'item' y se dirige a la ruta correcta */}
           <TouchableOpacity 
             style={styles.notifButton}
             onPress={() => router.push('/como-llegar' as any)}
@@ -384,7 +385,10 @@ const MainScreen = () => {
 
                   <TouchableOpacity
                     style={styles.detailsButton}
-                    onPress={() => router.push(`./detalleProducto?id=${item.id}`)}
+                    onPress={() => router.push({
+                      pathname: "/(tabs)/HomeMenu/detalleProducto",
+                      params: { id: item.id }
+                    })}
                   >
                     <TextComponent text="Ver detalles" fontWeight="bold" textSize={14} textColor="#fff" />
                     <Ionicons name="arrow-forward" size={16} color="#fff" />

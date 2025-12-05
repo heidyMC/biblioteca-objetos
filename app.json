@@ -29,7 +29,8 @@
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -66,7 +67,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "e788a7c8-a678-4e20-adbf-0f411228e989"
+        "projectId": "df0f56fe-ab16-4a99-b067-64e9d93aad34"
       }
     }
   }
