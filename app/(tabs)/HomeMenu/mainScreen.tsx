@@ -230,6 +230,15 @@ const MainScreen = () => {
         <Image source={require("@/assets/images/prestafacil-icon.jpg")} style={styles.logo} resizeMode="contain" />
         <View style={styles.profileContainer}>
           
+          {/* --- NUEVO: Botón "Cómo Llegar" --- */}
+          <TouchableOpacity 
+            style={styles.notifButton}
+            onPress={() => router.push('/como-llegar' as any)}
+          >
+            <Ionicons name="map-outline" size={24} color="#333" />
+          </TouchableOpacity>
+          {/* --------------------------------- */}
+
           {/* Botón Notificaciones con Badge */}
           <TouchableOpacity 
             style={styles.notifButton}

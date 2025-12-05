@@ -400,6 +400,7 @@ const DetalleProducto = () => {
           {objeto.latitud && objeto.longitud && (
             <View style={styles.mapContainer}>
               <TextComponent text="📍 Ubicación del Producto" fontWeight="bold" textSize={18} textColor="#1E293B" />
+              
               <View style={styles.mapBox}>
                 <WebView
                   originWhitelist={['*']}
@@ -410,14 +411,14 @@ const DetalleProducto = () => {
                     <head>
                       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
                       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+                      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
                       <style>
                         body { margin: 0; padding: 0; }
                         #map { height: 100vh; width: 100vw; }
                       </style>
                     </head>
                     <body>
-                      <div id="map"><\/div>
+                      <div id="map"></div>
                       <script>
                         var map = L.map('map', {zoomControl: false}).setView([${objeto.latitud}, ${objeto.longitud}], 15);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -433,6 +434,17 @@ const DetalleProducto = () => {
                   scrollEnabled={false}
                 />
               </View>
+
+              {/* --- NUEVO BOTÓN CÓMO LLEGAR --- */}
+              <TouchableOpacity 
+                style={styles.howToGetButton}
+                onPress={() => router.push('/como-llegar' as any)}
+              >
+                <Ionicons name="navigate" size={20} color="#fff" style={{marginRight: 8}} />
+                <TextComponent text="Ver Ruta / Cómo Llegar" fontWeight="bold" textSize={15} textColor="#fff" />
+              </TouchableOpacity>
+              {/* ------------------------------- */}
+
             </View>
           )}
 
@@ -509,7 +521,7 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between", // Distribuir espacio
+    justifyContent: "space-between", 
   },
   profileImage: {
     width: 45,
@@ -607,6 +619,24 @@ const styles = StyleSheet.create({
     borderColor: "#d1d5db",
     backgroundColor: "#e5e7eb",
   },
+  
+  // Estilo nuevo botón
+  howToGetButton: {
+    flexDirection: 'row',
+    backgroundColor: '#6366F1',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
   reviewCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
