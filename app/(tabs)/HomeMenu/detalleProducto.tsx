@@ -6,7 +6,10 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator, Dimensions, Image,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -14,6 +17,7 @@ import {
 } from "react-native";
 import { WebView } from "react-native-webview";
 import { supabase } from "../../../lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
 
 interface Usuario {
   id: string;
@@ -46,7 +50,6 @@ interface CaracteristicaObjeto {
   valor: string;
 }
 
-// <CHANGE> Added interface for additional images
 interface ImagenObjeto {
   id: string;
   objeto_id: string;
@@ -64,6 +67,7 @@ interface Resenia {
     foto_url: string;
   };
 }
+
 const { width } = Dimensions.get("window");
 
 const DetalleProducto = () => {
@@ -74,15 +78,21 @@ const DetalleProducto = () => {
   const [loading, setLoading] = useState(true);
   const [mostrarTodasResenas, setMostrarTodasResenas] = useState(false);
 
-  // <CHANGE> Added states for carousel
   const [imagenesAdicionales, setImagenesAdicionales] = useState<ImagenObjeto[]>([]);
   const [paginaActual, setPaginaActual] = useState(0);
+  
+  // --- ESTADOS PARA FAVORITOS ---
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
 
   const router = useRouter();
   const searchParams = useLocalSearchParams();
   const productoId = searchParams.id as string | undefined;
 
-  // <CHANGE> Restored original user loading logic from AsyncStorage
+  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [carouselWidth, setCarouselWidth] = useState(width);
+
   useFocusEffect(
     useCallback(() => {
       const cargarUsuario = async () => {
@@ -99,6 +109,57 @@ const DetalleProducto = () => {
       cargarUsuario();
     }, []),
   );
+
+  // --- FUNCIÓN: VERIFICAR SI ES FAVORITO ---
+  const checkFavorite = async (userId: string, objId: string) => {
+    try {
+      const { data } = await supabase
+        .from('favoritos')
+        .select('id')
+        .eq('usuario_id', userId)
+        .eq('objeto_id', objId)
+        .maybeSingle();
+      
+      setIsFavorite(!!data);
+    } catch (e) {
+      console.log("Error checking favorite:", e);
+    }
+  };
+
+  // --- FUNCIÓN: AGREGAR/QUITAR FAVORITO ---
+  const toggleFavorite = async () => {
+    if (!usuario || !productoId) {
+        Alert.alert("Atención", "Inicia sesión para guardar favoritos");
+        return;
+    }
+    
+    setFavLoading(true);
+    try {
+        if (isFavorite) {
+            // Quitar de favoritos
+            const { error } = await supabase
+                .from('favoritos')
+                .delete()
+                .eq('usuario_id', usuario.id)
+                .eq('objeto_id', productoId);
+            
+            if (error) throw error;
+            setIsFavorite(false);
+        } else {
+            // Agregar a favoritos
+            const { error } = await supabase
+                .from('favoritos')
+                .insert({ usuario_id: usuario.id, objeto_id: productoId });
+
+            if (error) throw error;
+            setIsFavorite(true);
+        }
+    } catch (error: any) {
+        Alert.alert("Error", "No se pudo actualizar favoritos: " + error.message);
+    } finally {
+        setFavLoading(false);
+    }
+  };
 
   const fetchReseñas = async () => {
     const { data, error } = await supabase
@@ -131,11 +192,7 @@ const DetalleProducto = () => {
       setReseñas(mapped);
     }
   };
-  const [fullscreenVisible, setFullscreenVisible] = useState(false);
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [carouselWidth, setCarouselWidth] = useState(width);
 
-  // <CHANGE> Added function to fetch additional images
   const fetchImagenes = async () => {
     const { data, error } = await supabase
       .from("imagenes_objeto")
@@ -178,12 +235,18 @@ const DetalleProducto = () => {
       if (!errorObjeto) {
         setObjeto(objetoData);
         setCaracteristicas(caracteristicasData || []);
+
+        // Verificar si es favorito (si hay usuario logueado)
+        const userData = await AsyncStorage.getItem("usuario");
+        if (userData) {
+            const u = JSON.parse(userData);
+            checkFavorite(u.id, productoId);
+        }
       } else {
         console.error("Error fetch objeto:", errorObjeto);
       }
 
       await fetchReseñas();
-      // <CHANGE> Call to fetch additional images
       await fetchImagenes();
       setLoading(false);
     };
@@ -208,29 +271,37 @@ const DetalleProducto = () => {
 
   const canRent = !!objeto && objeto.disponible === true;
   const resenasVisibles = mostrarTodasResenas ? reseñas : reseñas.slice(0, 3);
-
-  // <CHANGE> Calculate total images (portada + additional)
   const totalImages = 1 + imagenesAdicionales.length;
 
-
-
   return (
-
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/Perfil/PerfilUsuario")}>
+          <TouchableOpacity style={{flexDirection: 'row', alignItems: 'center'}} onPress={() => router.push("/(tabs)/Perfil/PerfilUsuario")}>
             <Image
               source={{
                 uri: usuario?.foto_url || "https://placehold.co/100x100?text=Sin+Foto",
               }}
               style={styles.profileImage}
             />
+             <View>
+                <TextComponent text={usuario?.nombre || "Cargando..."} fontWeight="bold" textSize={16} />
+                <TextComponent text={`💰 ${usuario?.tokens_disponibles ?? 0} tokens`} textSize={13} textColor="#555" />
+            </View>
           </TouchableOpacity>
-          <View>
-            <TextComponent text={usuario?.nombre || "Cargando..."} fontWeight="bold" textSize={16} />
-            <TextComponent text={`💰 ${usuario?.tokens_disponibles ?? 0} tokens`} textSize={13} textColor="#555" />
-          </View>
+          
+          {/* BOTÓN FAVORITOS */}
+          <TouchableOpacity 
+            onPress={toggleFavorite} 
+            disabled={favLoading} 
+            style={styles.favButton}
+          >
+            <Ionicons 
+                name={isFavorite ? "heart" : "heart-outline"} 
+                size={28} 
+                color={isFavorite ? "#EF4444" : "#6B7280"} 
+            />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -238,8 +309,6 @@ const DetalleProducto = () => {
         <ActivityIndicator size="large" color="#1E90FF" style={{ marginTop: 40 }} />
       ) : objeto ? (
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* ... existing code ... */}
-
           <View
             style={styles.carouselContainer}
             onLayout={(e) => setCarouselWidth(e.nativeEvent.layout.width)}
@@ -258,7 +327,6 @@ const DetalleProducto = () => {
               }}
               scrollEventThrottle={16}
             >
-              {/* Imagen principal */}
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => {
@@ -272,7 +340,6 @@ const DetalleProducto = () => {
                 />
               </TouchableOpacity>
 
-              {/* Imágenes adicionales */}
               {imagenesAdicionales.map((img) => (
                 <TouchableOpacity
                   key={img.id}
@@ -301,7 +368,6 @@ const DetalleProducto = () => {
               </View>
             )}
           </View>
-
 
           {objeto.categorias && (
             <View style={styles.categoryBadge}>
@@ -425,7 +491,6 @@ const DetalleProducto = () => {
       )}
 
     </View>
-
   );
 };
 
@@ -444,6 +509,7 @@ const styles = StyleSheet.create({
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between", // Distribuir espacio
   },
   profileImage: {
     width: 45,
@@ -451,18 +517,25 @@ const styles = StyleSheet.create({
     borderRadius: 22.5,
     marginRight: 10,
   },
+  favButton: {
+    padding: 8,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2
+  },
   carouselContainer: {
     position: "relative",
     marginBottom: 10,
   },
-
   objetoImage: {
     height: 260,
     borderRadius: 12,
     resizeMode: "cover",
   },
-
-
   carouselControls: {
     position: "absolute",
     bottom: 8,
@@ -565,6 +638,4 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-
-
 });

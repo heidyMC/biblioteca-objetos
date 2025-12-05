@@ -3,7 +3,6 @@
 import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-// IMPORTANTE: Asegúrate de importar 'Link' aquí
 import { useFocusEffect, useRouter, Link } from "expo-router"
 import { useCallback, useState } from "react"
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native"
@@ -68,7 +67,7 @@ const Perfil = () => {
   const handleCerrarSesion = async () => {
     try {
       await AsyncStorage.clear()
-      await supabase.auth.signOut() // También cerrar sesión en Supabase Auth
+      await supabase.auth.signOut() 
       setUsuario(null)
       router.replace("/(auth)/login")
     } catch (error) {
@@ -76,14 +75,13 @@ const Perfil = () => {
     }
   }
 
-  // Función para abrir el modal
   const handleEditarPerfil = () => {
     setModalVisible(true)
   }
 
-  // --- FUNCIONES DE NAVEGACIÓN ---
   const handleHistorialAlquileres = () => router.push("/HistorialAlquileresScreen" as any)
   const handleHistorialCompras = () => router.push("/HistorialComprasScreen" as any)
+  const handleFavoritos = () => router.push("/FavoritosScreen" as any) // Nuevo
   const handleRanking = () => router.push("/(tabs)/ranking")
   const irAHome = () => router.push("/(tabs)/HomeMenu/mainScreen")
 
@@ -218,12 +216,23 @@ const Perfil = () => {
           <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
         </TouchableOpacity>
 
-        {/* --- MODIFICACIÓN: ÚNICO BOTÓN DE GESTIÓN PARA ADMINS --- */}
+        {/* --- NUEVO BOTÓN FAVORITOS --- */}
+        <TouchableOpacity style={styles.actionCard} onPress={handleFavoritos}>
+            <View style={styles.actionIconContainer}>
+                <Ionicons name="heart-outline" size={24} color="#EF4444" />
+            </View>
+            <View style={styles.actionContent}>
+                <Text style={styles.actionTitle}>Mis Favoritos</Text>
+                <Text style={styles.actionSubtitle}>Objetos que te gustan</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#9CA3AF" />
+        </TouchableOpacity>
+        {/* ----------------------------- */}
+
         {usuario.is_admin && (
           <Link href="/AdminMenuScreen" asChild>
             <TouchableOpacity style={styles.actionCard}>
               <View style={styles.actionIconContainer}>
-                {/* Icono de grilla en color índigo para destacar */}
                 <Ionicons name="grid-outline" size={24} color="#4F46E5" />
               </View>
               <View style={styles.actionContent}>
@@ -234,7 +243,6 @@ const Perfil = () => {
             </TouchableOpacity>
           </Link>
         )}
-        {/* -------------------------------------------------------- */}
 
         <TouchableOpacity style={styles.actionCard} onPress={handleRanking}>
           <View style={styles.actionIconContainer}>
@@ -255,7 +263,6 @@ const Perfil = () => {
 
       <View style={{ height: 40 }} />
 
-      {/* RENDERIZAR EL MODAL AQUÍ */}
       {usuario && (
         <ModalEditarPerfil
           visible={modalVisible}
