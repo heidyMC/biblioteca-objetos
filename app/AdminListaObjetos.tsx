@@ -51,7 +51,7 @@ export default function AdminListaObjetos() {
 
   const deleteObject = async (id: string) => {
     try {
-      // 1. Eliminar relaciones primero (para evitar errores de Foreign Key si no hay Cascada)
+      // 1. Eliminar relaciones primero
       await supabase.from('imagenes_objeto').delete().eq('objeto_id', id);
       await supabase.from('caracteristicas_objeto').delete().eq('objeto_id', id);
       
@@ -61,7 +61,7 @@ export default function AdminListaObjetos() {
       if (error) throw error;
 
       Alert.alert("Eliminado", "El objeto ha sido eliminado correctamente.");
-      fetchObjetos(); // Recargar lista
+      fetchObjetos(); 
 
     } catch (error: any) {
       Alert.alert("Error", "No se pudo eliminar: " + error.message);
@@ -110,10 +110,17 @@ export default function AdminListaObjetos() {
         </TouchableOpacity>
         <Text style={styles.title}>Inventario</Text>
         
-        {/* Botón rápido para agregar */}
-        <TouchableOpacity onPress={() => router.push('/AdminAgregarObjeto')}>
-            <Ionicons name="add-circle" size={32} color="#4F46E5" />
-        </TouchableOpacity>
+        <View style={{flexDirection: 'row', gap: 15}}>
+            {/* BOTÓN PARA GESTIONAR CATEGORÍAS */}
+            <TouchableOpacity onPress={() => router.push('/AdminCategorias')}>
+                <Ionicons name="pricetags" size={28} color="#6366F1" />
+            </TouchableOpacity>
+
+            {/* Botón rápido para agregar objeto */}
+            <TouchableOpacity onPress={() => router.push('/AdminAgregarObjeto')}>
+                <Ionicons name="add-circle" size={32} color="#4F46E5" />
+            </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
