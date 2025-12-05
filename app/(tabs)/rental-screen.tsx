@@ -179,13 +179,26 @@ export default function Confirmar() {
     setFechaFin(f);
   };
 
-  // --- FUNCIÓN PARA GENERAR CÓDIGO ---
   const generateCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
   const handleConfirmar = async () => {
     if (!usuario) return Alert.alert("Inicia sesión", "Debes iniciar sesión para confirmar el alquiler.");
+    
+    // --- VERIFICACIÓN DE SEGURIDAD (BLOQUEO) ---
+    const { data: userCheck } = await supabase
+        .from('usuarios')
+        .select('is_blocked')
+        .eq('id', usuario.id)
+        .single();
+
+    if (userCheck?.is_blocked) {
+        Alert.alert("Acción Denegada", "Tu cuenta está suspendida. No puedes realizar alquileres.");
+        return;
+    }
+    // ------------------------------------------
+
     if (!producto) return Alert.alert("Error", "Producto no encontrado.");
     
     if (!existingAlquilerId && !producto.disponible) {
@@ -279,9 +292,8 @@ export default function Confirmar() {
         Alert.alert("¡Listo!", "Alquiler extendido correctamente.");
 
       } else {
-        // === NUEVO ALQUILER (SOLICITUD PENDIENTE) ===
+        // === NUEVO ALQUILER ===
         
-        // Generar código de entrega
         const deliveryCode = generateCode();
 
         const payload = {
@@ -292,7 +304,7 @@ export default function Confirmar() {
           dias_alquiler: diasCalc,
           tokens_totales: nuevoTotal,
           estado: "pendiente_aprobacion",
-          codigo_entrega: deliveryCode, // <-- CÓDIGO GENERADO AQUÍ
+          codigo_entrega: deliveryCode,
           created_at: new Date().toISOString(),
         };
 
@@ -301,11 +313,9 @@ export default function Confirmar() {
           return Alert.alert("Tokens insuficientes", `Te faltan ${nuevoTotal - tokensUsuario} tokens.`);
         }
 
-        // 1. Insertar alquiler pendiente
         const { error: insErr } = await supabase.from("alquileres").insert([payload]);
         if (insErr) throw insErr;
 
-        // 2. Marcar objeto como NO disponible (Reservado)
         const { error: updateError } = await supabase
           .from("objetos")
           .update({ disponible: false })
@@ -317,7 +327,6 @@ export default function Confirmar() {
           setProducto((p) => (p && p.id === producto.id ? { ...p, disponible: false } : p));
         }
 
-        // 3. Descontar tokens al usuario
         const nuevoSaldo = tokensUsuario - nuevoTotal;
         const { error: userUpdErr } = await supabase
           .from("usuarios")

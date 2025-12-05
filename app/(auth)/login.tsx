@@ -60,6 +60,13 @@ export default function LoginScreen() {
         return
       }
 
+      // --- VERIFICACIÓN DE BLOQUEO ---
+      if (data.is_blocked) {
+        Alert.alert("Cuenta Suspendida", "Tu cuenta ha sido suspendida por el administrador. Contacta a soporte para más información.");
+        return; 
+      }
+      // -------------------------------
+
       await limpiarCache()
       await AsyncStorage.setItem("usuario", JSON.stringify(data))
       Alert.alert("Sesión iniciada", `Bienvenido ${data.nombre || ""}`)
@@ -114,6 +121,12 @@ export default function LoginScreen() {
               .select("*")
               .eq("correo", user.email)
               .maybeSingle()
+
+            // VERIFICACIÓN BLOQUEO GOOGLE
+            if (existing && existing.is_blocked) {
+                Alert.alert("Cuenta Suspendida", "Tu cuenta ha sido suspendida por el administrador.");
+                return;
+            }
 
             let usuarioFinal = existing
 
@@ -180,7 +193,6 @@ export default function LoginScreen() {
             <Text style={styles.cardDescription}>Ingresa tus credenciales para acceder</Text>
 
             <View style={styles.form}>
-              {/* EMAIL */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Correo electrónico</Text>
                 <TextInput
@@ -194,7 +206,6 @@ export default function LoginScreen() {
                 />
               </View>
 
-              {/* PASSWORD - CORREGIDO */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Contraseña</Text>
 
@@ -221,7 +232,6 @@ export default function LoginScreen() {
                 </View>
               </View>
 
-              {/* LOGIN BUTTON */}
               <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleLogin}
@@ -238,7 +248,6 @@ export default function LoginScreen() {
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* GOOGLE */}
               <TouchableOpacity
                 style={[styles.googleButton, isLoading && styles.buttonDisabled]}
                 onPress={signInWithGoogle}
@@ -276,9 +285,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F9FAFB" },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, justifyContent: "center", padding: 16 },
-
   header: { alignItems: "center", marginBottom: 32 },
-
   logoContainer: {
     width: 80,
     height: 80,
@@ -294,10 +301,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-
   title: { fontSize: 24, fontWeight: "700", color: "#0A0A0A", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#737373" },
-
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -308,15 +313,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-
   cardTitle: { fontSize: 24, fontWeight: "700", color: "#0A0A0A", marginBottom: 8 },
   cardDescription: { fontSize: 14, color: "#737373", marginBottom: 24 },
-
   form: { gap: 16 },
   inputGroup: { gap: 8 },
-
   label: { fontSize: 14, fontWeight: "600", color: "#0A0A0A" },
-
   input: {
     height: 45,
     backgroundColor: "#F9FAFB",
@@ -326,8 +327,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 16,
   },
-
-  // 🔥 INPUT DE CONTRASEÑA MODERNO
   inputPasswordWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -337,31 +336,25 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
   },
-
   inputPassword: {
     flex: 1,
     height: 45,
     fontSize: 16,
   },
-
   eyeInside: {
     paddingHorizontal: 4,
     paddingVertical: 8,
   },
-
   button: {
     backgroundColor: "#2563EB",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
   },
-
   buttonDisabled: {
     opacity: 0.5,
   },
-
   buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
-
   divider: {
     flexDirection: "row",
     alignItems: "center",
@@ -378,7 +371,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#737373",
   },
-
   googleButton: {
     flexDirection: "row",
     justifyContent: "center",
@@ -390,11 +382,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   googleButtonText: { fontSize: 16, color: "#0A0A0A", fontWeight: "600" },
-
   linkContainer: { marginTop: 12 },
   linkText: { textAlign: "center", color: "#737373" },
   linkTextBold: { fontWeight: "700", color: "#2563EB" },
-
   footer: {
     marginTop: 24,
     alignItems: "center",

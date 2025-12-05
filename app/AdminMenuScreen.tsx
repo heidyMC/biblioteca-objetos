@@ -14,15 +14,22 @@ export default function AdminMenuScreen() {
       color: "#10B981", 
       route: "/AdminListaObjetos"
     },
-    // --- NUEVO DASHBOARD ---
     {
-      title: "Estadísticas & Reportes",
-      subtitle: "Ganancias, Top Objetos e Inactivos",
+      title: "Dashboard Estadísticas",
+      subtitle: "Métricas globales y gráficos",
       icon: "pie-chart", 
-      color: "#EC4899", // Rosa
+      color: "#EC4899", 
       route: "/AdminDashboardScreen"
     },
-    // -----------------------
+    // --- NUEVA OPCIÓN ---
+    {
+      title: "Gestionar Usuarios",
+      subtitle: "Suspender o desbloquear cuentas",
+      icon: "people", 
+      color: "#EF4444", // Rojo
+      route: "/AdminUsuariosScreen"
+    },
+    // -------------------
     {
       title: "Top Usuarios",
       subtitle: "Ver clientes con más alquileres",
@@ -55,7 +62,7 @@ export default function AdminMenuScreen() {
       title: "Ubicación de Biblioteca",
       subtitle: "Cambiar ubicación de todos los objetos",
       icon: "map",
-      color: "#6366F1", // Índigo
+      color: "#6366F1", 
       route: "/AdminCambiarUbicacion"
     },
   ];
