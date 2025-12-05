@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,20 +9,107 @@ export default function AdminCambiarUbicacion() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   
-  // Coordenadas iniciales (Cochabamba por defecto o la que prefieras)
-  const [region, setRegion] = useState({
-    latitude: -17.392077,
-    longitude: -66.149714,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  });
+  // Coordenadas iniciales (Cochabamba)
+  const INITIAL_LAT = -17.392077;
+  const INITIAL_LON = -66.149714;
 
-  // Estado para la ubicación seleccionada (inicia igual que la región)
+  // Estado para la ubicación seleccionada
   const [selectedLocation, setSelectedLocation] = useState({
-    latitude: -17.392077,
-    longitude: -66.149714,
+    latitude: INITIAL_LAT,
+    longitude: INITIAL_LON,
   });
 
+  // --- HTML DEL MAPA LEAFLET ---
+  // Incluye lógica para mover el pin y enviar datos a React Native
+  const leafletHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+      <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100vw; }
+        .instruction-box {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px;
+            font-family: sans-serif; font-size: 12px; z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        // 1. Inicializar Mapa
+        var map = L.map('map').setView([${INITIAL_LAT}, ${INITIAL_LON}], 15);
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: 'OpenStreetMap'
+        }).addTo(map);
+
+        // 2. Crear Icono Personalizado (Opcional, para que se vea mejor)
+        var blueIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // 3. Agregar Marcador Arrastrable
+        var marker = L.marker([${INITIAL_LAT}, ${INITIAL_LON}], {
+            draggable: true,
+            icon: blueIcon
+        }).addTo(map);
+
+        marker.bindPopup("<b>Ubicación Central</b><br>Arrástrame para cambiar.").openPopup();
+
+        // 4. Función para enviar coordenadas a React Native
+        function sendLocation(lat, lng) {
+            if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({ latitude: lat, longitude: lng }));
+            }
+        }
+
+        // 5. Evento: Al terminar de arrastrar
+        marker.on('dragend', function(e) {
+            var position = marker.getLatLng();
+            sendLocation(position.lat, position.lng);
+            map.panTo(position); // Centrar mapa en el nuevo punto
+        });
+
+        // 6. Evento: Al hacer click en el mapa (Mover marcador ahí también)
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            sendLocation(e.latlng.lat, e.latlng.lng);
+            map.panTo(e.latlng);
+        });
+
+      </script>
+    </body>
+    </html>
+  `;
+
+  // --- MANEJO DE MENSAJES DEL WEBVIEW ---
+  const handleWebViewMessage = (event: any) => {
+    try {
+        const data = JSON.parse(event.nativeEvent.data);
+        if (data.latitude && data.longitude) {
+            setSelectedLocation({
+                latitude: data.latitude,
+                longitude: data.longitude
+            });
+        }
+    } catch (e) {
+        console.error("Error parseando coordenadas del mapa", e);
+    }
+  };
+
+  // --- LÓGICA DE GUARDADO (IGUAL QUE ANTES) ---
   const handleUpdateLocations = () => {
     Alert.alert(
       "¿Cambiar ubicación de TODO?",
@@ -37,28 +124,28 @@ export default function AdminCambiarUbicacion() {
   const performUpdate = async () => {
     setLoading(true);
     try {
-      // Actualizamos TODOS los objetos donde el ID no sea nulo (es decir, todos)
-      // Usamos un filtro "dummy" (id no igual a '0') para que Supabase permita el update masivo
-      // si tienes RLS activado, asegúrate de ser admin.
-      const { error, count } = await supabase
+      // 1. Verificar ID de admin o similar si tienes RLS estricto, 
+      // pero aquí asumimos que el usuario ya está autenticado como admin.
+      
+      const { error } = await supabase
         .from('objetos')
         .update({
           latitud: selectedLocation.latitude,
           longitud: selectedLocation.longitude
         })
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Truco para seleccionar todos
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Truco para afectar a todas las filas
 
       if (error) throw error;
 
       Alert.alert(
         "¡Ubicación Actualizada!",
-        `Se han movido los objetos a la nueva ubicación central.`,
+        `Todos los objetos ahora están en:\nLat: ${selectedLocation.latitude.toFixed(5)}\nLon: ${selectedLocation.longitude.toFixed(5)}`,
         [{ text: "OK", onPress: () => router.back() }]
       );
 
     } catch (error: any) {
       console.error(error);
-      Alert.alert("Error", "No se pudo actualizar la ubicación: " + error.message);
+      Alert.alert("Error", "No se pudo actualizar: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -73,26 +160,21 @@ export default function AdminCambiarUbicacion() {
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
           <Text style={styles.headerTitle}>Definir Ubicación Central</Text>
-          <Text style={styles.headerSubtitle}>Mueve el pin a la nueva ubicación</Text>
+          <Text style={styles.headerSubtitle}>Arrastra el marcador o toca el mapa</Text>
         </View>
       </View>
 
-      <MapView
-        style={styles.map}
-        provider={PROVIDER_GOOGLE} // Usa Google Maps si está configurado, si no quita esta línea
-        initialRegion={region}
-        onPress={(e) => setSelectedLocation(e.nativeEvent.coordinate)}
-        onRegionChangeComplete={setRegion} // Opcional: para que el mapa no se resetee
-      >
-        <Marker
-          coordinate={selectedLocation}
-          draggable
-          onDragEnd={(e) => setSelectedLocation(e.nativeEvent.coordinate)}
-          title="Nueva Ubicación Central"
-          description="Todos los objetos se moverán aquí"
-          pinColor="#4F46E5" // Color índigo/azul
+      {/* MAPA LEAFLET */}
+      <View style={styles.mapContainer}>
+        <WebView
+            originWhitelist={['*']}
+            source={{ html: leafletHtml }}
+            style={{ flex: 1 }}
+            onMessage={handleWebViewMessage} // Recibe las coordenadas del JS
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
         />
-      </MapView>
+      </View>
 
       {/* Panel inferior de acción */}
       <View style={styles.footer}>
@@ -110,8 +192,8 @@ export default function AdminCambiarUbicacion() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Ionicons name="location" size={20} color="#fff" style={{marginRight: 8}} />
-              <Text style={styles.saveButtonText}>Establecer Ubicación</Text>
+              <Ionicons name="save-outline" size={20} color="#fff" style={{marginRight: 8}} />
+              <Text style={styles.saveButtonText}>Guardar Nueva Ubicación</Text>
             </>
           )}
         </TouchableOpacity>
@@ -122,7 +204,7 @@ export default function AdminCambiarUbicacion() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  map: { width: '100%', height: '100%' },
+  mapContainer: { flex: 1, backgroundColor: '#f0f0f0' }, // Contenedor para el WebView
   
   headerContainer: {
     position: 'absolute', top: 50, left: 20, right: 20,

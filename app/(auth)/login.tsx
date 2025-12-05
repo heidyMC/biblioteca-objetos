@@ -62,7 +62,19 @@ export default function LoginScreen() {
 
       // --- VERIFICACIÓN DE BLOQUEO ---
       if (data.is_blocked) {
-        Alert.alert("Cuenta Suspendida", "Tu cuenta ha sido suspendida por el administrador. Contacta a soporte para más información.");
+        Alert.alert(
+          "Cuenta Suspendida",
+          "Tu cuenta ha sido suspendida por el administrador. Serás redirigido en breve."
+        );
+        
+        // Cerramos sesión por seguridad
+        await supabase.auth.signOut();
+
+        // Esperamos 4 segundos y recargamos el login
+        setTimeout(() => {
+            router.replace("/(auth)/login");
+        }, 4000);
+        
         return; 
       }
       // -------------------------------
@@ -122,11 +134,22 @@ export default function LoginScreen() {
               .eq("correo", user.email)
               .maybeSingle()
 
-            // VERIFICACIÓN BLOQUEO GOOGLE
+            // --- VERIFICACIÓN BLOQUEO GOOGLE ---
             if (existing && existing.is_blocked) {
-                Alert.alert("Cuenta Suspendida", "Tu cuenta ha sido suspendida por el administrador.");
+                Alert.alert(
+                  "Cuenta Suspendida", 
+                  "Tu cuenta ha sido suspendida por el administrador."
+                );
+
+                await supabase.auth.signOut();
+
+                setTimeout(() => {
+                    router.replace("/(auth)/login");
+                }, 4000);
+
                 return;
             }
+            // -----------------------------------
 
             let usuarioFinal = existing
 

@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase"
 import { Ionicons } from "@expo/vector-icons"
-import * as FileSystem from "expo-file-system"; // Agregado expo-file-system para manejar archivos locales
+import * as FileSystem from "expo-file-system/legacy"
 import * as ImagePicker from "expo-image-picker"
 import { useEffect, useState } from "react"
 import {
@@ -32,29 +32,18 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
   const [nombre, setNombre] = useState("")
   const [telefono, setTelefono] = useState("")
   const [fotoUri, setFotoUri] = useState<string | null>(null)
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const [enablePasswordChange, setEnablePasswordChange] = useState(false)
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // 1. ELIMINACIÓN DE ESTADOS RELACIONADOS CON CONTRASEÑA
 
   useEffect(() => {
     if (visible && usuario) {
       setNombre(usuario?.nombre || "")
       setTelefono(usuario?.telefono || "")
       setFotoUri(usuario?.foto_url || null)
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
       setErrors({})
-      setEnablePasswordChange(false)
-      setShowCurrentPassword(false)
-      setShowNewPassword(false)
-      setShowConfirmPassword(false)
+      // Lógica de contraseña eliminada
     }
   }, [visible, usuario])
 
@@ -71,19 +60,7 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
       newErrors.telefono = "El teléfono debe tener al menos 7 caracteres"
     }
 
-    if (enablePasswordChange) {
-      if (!currentPassword.trim()) {
-        newErrors.currentPassword = "Debes ingresar tu contraseña actual para cambiarla"
-      }
-
-      if (newPassword.trim().length < 6) {
-        newErrors.newPassword = "La nueva contraseña debe tener al menos 6 caracteres"
-      }
-
-      if (newPassword !== confirmPassword) {
-        newErrors.confirmPassword = "Las contraseñas no coinciden"
-      }
-    }
+    // 2. ELIMINACIÓN DE LA VALIDACIÓN DE CONTRASEÑA
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -102,31 +79,24 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
     }
   }
 
-  // Esto soluciona el problema con usuarios de Google OAuth y archivos locales
   const uploadPhotoToSupabase = async (uri: string, userId: string): Promise<string> => {
     try {
-      // Generar nombre de archivo único
       const fileName = `${userId}_${Date.now()}.jpg`
-
-      // Verificar si es una URI local (de ImagePicker) o una URL remota
       const isLocalFile = uri.startsWith("file://") || uri.startsWith("content://")
 
       let fileData: Uint8Array
 
       if (isLocalFile) {
-        // Usar FileSystem de Expo para leer archivos locales (más confiable que fetch)
         const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" })
-
-        // Convertir base64 a Uint8Array
         fileData = decode(base64)
       } else {
-        // Para URLs remotas, usar fetch (esto es raro pero por si acaso)
+        // En un entorno de React Native, fetch podría fallar para URIs remotos o de asset/content,
+        // pero se mantiene la lógica si `uri` puede ser una URL web.
         const response = await fetch(uri)
         const buffer = await response.arrayBuffer()
         fileData = new Uint8Array(buffer)
       }
 
-      // Subir la imagen a Supabase Storage
       const { data, error } = await supabase.storage.from("fotos_perfil").upload(fileName, fileData, {
         contentType: "image/jpeg",
         upsert: true,
@@ -137,7 +107,6 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
         throw error
       }
 
-      // Obtener URL pública de la imagen
       const { data: publicData } = supabase.storage.from("fotos_perfil").getPublicUrl(fileName)
 
       return publicData.publicUrl
@@ -147,7 +116,6 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
     }
   }
 
-  // Función helper para decodificar base64 a Uint8Array
   const decode = (base64: string): Uint8Array => {
     const binaryString = atob(base64)
     const bytes = new Uint8Array(binaryString.length)
@@ -164,81 +132,43 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
 
     setLoading(true)
     try {
-      // Cambio de contraseña si está habilitado
-      if (enablePasswordChange && newPassword.trim().length > 0) {
-        const {
-          data: { user: authUser },
-          error: authUserError,
-        } = await supabase.auth.getUser()
+      // 3. ELIMINACIÓN DE LA LÓGICA DE ACTUALIZACIÓN DE CONTRASEÑA
 
-        if (authUserError || !authUser || !authUser.email) {
-          Alert.alert("Error", "No se pudo verificar tu sesión. Intenta volver a iniciar sesión.")
-          setLoading(false)
-          return
-        }
-
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: authUser.email,
-          password: currentPassword.trim(),
-        })
-
-        if (signInError) {
-          setErrors({ currentPassword: "La contraseña actual es incorrecta" })
-          setLoading(false)
-          return
-        }
-
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: newPassword.trim(),
-        })
-
-        if (updateError) throw updateError
-      }
-
-      // Subida de foto con mejor manejo de errores
+      // Subida de foto
       let fotoUrl = usuario.foto_url
       let photoUploadFailed = false
 
-      // Solo intentar subir si hay una nueva foto seleccionada
       if (fotoUri && fotoUri !== usuario.foto_url) {
         try {
           fotoUrl = await uploadPhotoToSupabase(fotoUri, usuario.id)
         } catch (uploadErr: any) {
           console.error("Photo upload failed:", uploadErr)
           photoUploadFailed = true
-          // No lanzamos el error, continuamos con la actualización de otros datos
         }
       }
 
-      // Preparar datos para actualizar
       const dataToUpdate: any = {
         nombre: nombre.trim(),
         telefono: telefono.trim(),
       }
 
-      // Solo actualizar foto_url si la subida fue exitosa
       if (fotoUrl && fotoUrl !== usuario.foto_url && !photoUploadFailed) {
         dataToUpdate.foto_url = fotoUrl
       }
 
-      // Actualizar datos en la base de datos
       const { error: updateDataError } = await supabase.from("usuarios").update(dataToUpdate).eq("id", usuario.id)
 
       if (updateDataError) throw updateDataError
 
-      // Mostrar mensaje apropiado según el resultado
       if (photoUploadFailed) {
         Alert.alert(
           "Perfil Actualizado",
-          "Los datos se actualizaron correctamente, pero no se pudo cambiar la foto de perfil. Verifica los permisos de almacenamiento o intenta con otra imagen.",
+          "Los datos se actualizaron correctamente, pero no se pudo cambiar la foto de perfil.",
         )
       } else {
-        Alert.alert("¡Éxito!", "Perfil actualizado correctamente.")
+        Alert.alert("¡Éxito! 🥳", "Perfil actualizado correctamente.")
       }
 
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
       onUpdate()
       onClose()
     } catch (error: any) {
@@ -261,7 +191,6 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.keyboardView}>
           <View style={styles.modalWrapper}>
             <View style={styles.modalContainer}>
-              {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>Editar Perfil</Text>
                 <TouchableOpacity onPress={onClose} style={styles.closeButton} disabled={loading}>
@@ -269,7 +198,6 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
                 </TouchableOpacity>
               </View>
 
-              {/* Contenido Scrolleable */}
               <ScrollView
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
@@ -296,7 +224,6 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
 
                 <View style={styles.divider} />
 
-                {/* Información Personal */}
                 <Text style={styles.sectionHeader}>Información Personal</Text>
 
                 <View style={styles.inputContainer}>
@@ -332,113 +259,9 @@ export default function ModalEditarPerfil({ visible, onClose, usuario, onUpdate 
                   <ErrorText field="telefono" />
                 </View>
 
+                {/* 4. ELIMINACIÓN DE LA SECCIÓN DE CAMBIO DE CONTRASEÑA */}
                 <View style={styles.divider} />
 
-                <View style={styles.passwordSectionHeader}>
-                  <View style={styles.passwordHeaderText}>
-                    <Text style={styles.sectionHeader}>Cambiar Contraseña</Text>
-                    <Text style={styles.passwordHint}>Habilita para cambiar tu contraseña.</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.toggleButton, enablePasswordChange && styles.toggleButtonActive]}
-                    onPress={() => {
-                      setEnablePasswordChange(!enablePasswordChange)
-                      if (!enablePasswordChange) {
-                        setCurrentPassword("")
-                        setNewPassword("")
-                        setConfirmPassword("")
-                        setErrors({})
-                      }
-                    }}
-                    disabled={loading}
-                  >
-                    <View style={styles.toggleContent}>
-                      <Ionicons
-                        name={enablePasswordChange ? "toggle" : "toggle-outline"}
-                        size={32}
-                        color={enablePasswordChange ? "#6366F1" : "#D1D5DB"}
-                      />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
-                {enablePasswordChange && (
-                  <>
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Contraseña Actual</Text>
-                      <View style={styles.passwordInputWrapper}>
-                        <TextInput
-                          style={[styles.input, styles.passwordInput, errors.currentPassword && styles.inputError]}
-                          value={currentPassword}
-                          onChangeText={(text) => {
-                            setCurrentPassword(text)
-                            if (errors.currentPassword) setErrors({ ...errors, currentPassword: "" })
-                          }}
-                          secureTextEntry={!showCurrentPassword}
-                          placeholder="Ingresa tu contraseña actual"
-                          placeholderTextColor="#9CA3AF"
-                          editable={!loading}
-                        />
-                        <TouchableOpacity
-                          onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                          style={styles.eyeButton}
-                        >
-                          <Ionicons name={showCurrentPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
-                        </TouchableOpacity>
-                      </View>
-                      <ErrorText field="currentPassword" />
-                    </View>
-
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Nueva Contraseña</Text>
-                      <View style={styles.passwordInputWrapper}>
-                        <TextInput
-                          style={[styles.input, styles.passwordInput, errors.newPassword && styles.inputError]}
-                          value={newPassword}
-                          onChangeText={(text) => {
-                            setNewPassword(text)
-                            if (errors.newPassword) setErrors({ ...errors, newPassword: "" })
-                          }}
-                          secureTextEntry={!showNewPassword}
-                          placeholder="Mínimo 6 caracteres"
-                          placeholderTextColor="#9CA3AF"
-                          editable={!loading}
-                        />
-                        <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={styles.eyeButton}>
-                          <Ionicons name={showNewPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
-                        </TouchableOpacity>
-                      </View>
-                      <ErrorText field="newPassword" />
-                    </View>
-
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.label}>Confirmar Contraseña</Text>
-                      <View style={styles.passwordInputWrapper}>
-                        <TextInput
-                          style={[styles.input, styles.passwordInput, errors.confirmPassword && styles.inputError]}
-                          value={confirmPassword}
-                          onChangeText={(text) => {
-                            setConfirmPassword(text)
-                            if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" })
-                          }}
-                          secureTextEntry={!showConfirmPassword}
-                          placeholder="Repite la nueva contraseña"
-                          placeholderTextColor="#9CA3AF"
-                          editable={!loading}
-                        />
-                        <TouchableOpacity
-                          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                          style={styles.eyeButton}
-                        >
-                          <Ionicons name={showConfirmPassword ? "eye" : "eye-off"} size={20} color="#6B7280" />
-                        </TouchableOpacity>
-                      </View>
-                      <ErrorText field="confirmPassword" />
-                    </View>
-                  </>
-                )}
-
-                {/* Botones */}
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
                     style={[styles.cancelButton, loading && styles.buttonDisabled]}
@@ -575,38 +398,7 @@ const styles = StyleSheet.create({
     color: "#6366F1",
     marginBottom: 8,
   },
-  passwordSectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-    gap: 12,
-  },
-  passwordHint: {
-    fontSize: 13,
-    color: "#6B7280",
-  },
-  toggleButton: {
-    padding: 6,
-    borderRadius: 12,
-    backgroundColor: "#F3F4F6",
-    minHeight: 48,
-    minWidth: 48,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  toggleButtonActive: {
-    backgroundColor: "#EEF2FF",
-    borderWidth: 2,
-    borderColor: "#6366F1",
-  },
-  toggleContent: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  passwordHeaderText: {
-    flex: 1,
-  },
+  // passwordSectionHeader, passwordHint, toggleButton, toggleButtonActive, toggleContent, passwordHeaderText, oauthWarning, oauthWarningText eliminados
   inputContainer: {
     marginBottom: 16,
   },
@@ -654,6 +446,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
     marginVertical: 24,
   },
+  // oauthWarning y oauthWarningText eliminados
   buttonContainer: {
     flexDirection: "row",
     gap: 12,
